@@ -82,6 +82,8 @@
 #include "mbedtls/sha512.h"
 #include "mbedtls/xtea.h"
 
+#include "arm_cmse.h"
+
 #define ARRAY_LENGTH( array ) ( sizeof( array ) / sizeof( *( array ) ) )
 
 /* constant-time buffer comparison */
@@ -96,11 +98,79 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
     return( diff );
 }
 
-
-
 /****************************************************************/
 /* Global data, support functions and library management */
 /****************************************************************/
+
+#define CA_CERTIFICATE                                                  \
+"-----BEGIN CERTIFICATE-----\r\n"                                       \
+"MIICrDCCAlKgAwIBAgICEAAwCgYIKoZIzj0EAwIwga0xCzAJBgNVBAYTAkNIMRQw\r\n"  \
+"EgYDVQQIDAtTd2l0emVybGFuZDEOMAwGA1UEBwwFVXp3aWwxHzAdBgNVBAoMFkVt\r\n"  \
+"YmVkZGVkIFNlY3VyaXR5IEdtYkgxFjAUBgNVBAsMDVRlYW0gU2VjdXJpdHkxEjAQ\r\n"  \
+"BgNVBAMMCU1hc3Rlcl9DQTErMCkGCSqGSIb3DQEJARYcdG9iaWFzLnNjaGxhZXBm\r\n"  \
+"ZXJAYmx1ZXdpbi5jaDAeFw0xOTA5MDYwNjM4NTNaFw0yOTA5MDMwNjM4NTNaMIGn\r\n"  \
+"MQswCQYDVQQGEwJDSDEUMBIGA1UECAwLU3dpdHplcmxhbmQxHzAdBgNVBAoMFkVt\r\n"  \
+"YmVkZGVkIFNlY3VyaXR5IEdtYkgxFjAUBgNVBAsMDVRlYW0gU2VjdXJpdHkxHDAa\r\n"  \
+"BgNVBAMME01hc3Rlcl9JbnRlcm1lZGlhdGUxKzApBgkqhkiG9w0BCQEWHHRvYmlh\r\n"  \
+"cy5zY2hsYWVwZmVyQGJsdWV3aW4uY2gwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC\r\n"  \
+"AATkzilFhtS6EVs0AS95Ct+NKQvpq3ljVbnlsTpfqZ9Coqeq+BOQ4sZOLthutlYc\r\n"  \
+"O8cubR6WzUuINZQxyaPB/7yro2YwZDAdBgNVHQ4EFgQUJXJuI/jYEfCh/4gpAMv0\r\n"  \
+"c39JW5AwHwYDVR0jBBgwFoAUFjdDUMu1TXi3TDKyhdLmoYgBBugwEgYDVR0TAQH/\r\n"  \
+"BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAYYwCgYIKoZIzj0EAwIDSAAwRQIhAIWj\r\n"  \
+"sVXfABLq8PDwBXxrlvEdV0M49sFi4fOI3zlRy62eAiAc8O77aTmTfCRwBvOfmjQZ\r\n"  \
+"UEP8TWEj946WZAKQrdnZxg==\r\n"                                          \
+"-----END CERTIFICATE-----\r\n"                                         \
+"-----BEGIN CERTIFICATE-----\r\n"                                       \
+"MIICwjCCAmegAwIBAgIUXQXeFB2YpaTKg5MqFBtT5x2GA6IwCgYIKoZIzj0EAwIw\r\n"  \
+"ga0xCzAJBgNVBAYTAkNIMRQwEgYDVQQIDAtTd2l0emVybGFuZDEOMAwGA1UEBwwF\r\n"  \
+"VXp3aWwxHzAdBgNVBAoMFkVtYmVkZGVkIFNlY3VyaXR5IEdtYkgxFjAUBgNVBAsM\r\n"  \
+"DVRlYW0gU2VjdXJpdHkxEjAQBgNVBAMMCU1hc3Rlcl9DQTErMCkGCSqGSIb3DQEJ\r\n"  \
+"ARYcdG9iaWFzLnNjaGxhZXBmZXJAYmx1ZXdpbi5jaDAeFw0xOTA5MDYwNjMyMjJa\r\n"  \
+"Fw0zOTA5MDEwNjMyMjJaMIGtMQswCQYDVQQGEwJDSDEUMBIGA1UECAwLU3dpdHpl\r\n"  \
+"cmxhbmQxDjAMBgNVBAcMBVV6d2lsMR8wHQYDVQQKDBZFbWJlZGRlZCBTZWN1cml0\r\n"  \
+"eSBHbWJIMRYwFAYDVQQLDA1UZWFtIFNlY3VyaXR5MRIwEAYDVQQDDAlNYXN0ZXJf\r\n"  \
+"Q0ExKzApBgkqhkiG9w0BCQEWHHRvYmlhcy5zY2hsYWVwZmVyQGJsdWV3aW4uY2gw\r\n"  \
+"WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQJHKNXDlR5ffYAt6+ZyhvEKmEV0+T9\r\n"  \
+"qtwHzPaIecxteSguSC5nTm5DRLtglTD0Xx12Ov/1UdFLeaqMAqYS/n52o2MwYTAd\r\n"  \
+"BgNVHQ4EFgQUFjdDUMu1TXi3TDKyhdLmoYgBBugwHwYDVR0jBBgwFoAUFjdDUMu1\r\n"  \
+"TXi3TDKyhdLmoYgBBugwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYw\r\n"  \
+"CgYIKoZIzj0EAwIDSQAwRgIhALveAxcCOKBHtT9eaWoNV8gViR6J6SvVYvjX3V1m\r\n"  \
+"XSumAiEAucSkRiJnPEGLtwuZsWHY02JIdWde2tRdUxbn9hYX1fw=\r\n"              \
+"-----END CERTIFICATE-----\r\n"
+
+#define CLIENT_CERTIFICATE                                             \
+"-----BEGIN CERTIFICATE-----\r\n"                                      \
+"MIIDDjCCArSgAwIBAgICEAIwCgYIKoZIzj0EAwIwgacxCzAJBgNVBAYTAkNIMRQw\r\n" \
+"EgYDVQQIDAtTd2l0emVybGFuZDEfMB0GA1UECgwWRW1iZWRkZWQgU2VjdXJpdHkg\r\n" \
+"R21iSDEWMBQGA1UECwwNVGVhbSBTZWN1cml0eTEcMBoGA1UEAwwTTWFzdGVyX0lu\r\n" \
+"dGVybWVkaWF0ZTErMCkGCSqGSIb3DQEJARYcdG9iaWFzLnNjaGxhZXBmZXJAYmx1\r\n" \
+"ZXdpbi5jaDAeFw0xOTA5MDYwODE1NThaFw0yMTA5MDUwODE1NThaMIGvMQswCQYD\r\n" \
+"VQQGEwJDSDEUMBIGA1UECAwLU3dpdHplcmxhbmQxDjAMBgNVBAcMBVV6d2lsMR8w\r\n" \
+"HQYDVQQKDBZFbWJlZGRlZCBTZWN1cml0eSBHbWJIMRYwFAYDVQQLDA1UZWFtIFNl\r\n" \
+"Y3VyaXR5MRQwEgYDVQQDDAtJbkVTX1NlbnNvcjErMCkGCSqGSIb3DQEJARYcdG9i\r\n" \
+"aWFzLnNjaGxhZXBmZXJAYmx1ZXdpbi5jaDBZMBMGByqGSM49AgEGCCqGSM49AwEH\r\n" \
+"A0IABGhbTAi3wTGTe+qe8Zpa550ERXQONF28pX7icz6x+8xJmeT6DxMsLQnn7gu/\r\n" \
+"BN3etz1x6/KAU7GmsbPkMSGjlqajgcUwgcIwCQYDVR0TBAIwADARBglghkgBhvhC\r\n" \
+"AQEEBAMCBaAwMwYJYIZIAYb4QgENBCYWJE9wZW5TU0wgR2VuZXJhdGVkIENsaWVu\r\n" \
+"dCBDZXJ0aWZpY2F0ZTAdBgNVHQ4EFgQU9eip0k7xmMrjERGJis39Qp7KtoMwHwYD\r\n" \
+"VR0jBBgwFoAUJXJuI/jYEfCh/4gpAMv0c39JW5AwDgYDVR0PAQH/BAQDAgXgMB0G\r\n" \
+"A1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAKBggqhkjOPQQDAgNIADBFAiEA\r\n" \
+"vCQwhCkW24eHE4IIldDX/L3L8IHsMgOr1nr2wXJruQwCIHFQ5J8RzAoi8+uaUxSA\r\n" \
+"JkL2jxr3NFz7hAH7FDmXZe9s\r\n"                                         \
+"-----END CERTIFICATE-----\r\n"
+
+#define CLIENT_PRIVATE_KEY                                             \
+"-----BEGIN EC PARAMETERS-----\r\n"                                    \
+"BggqhkjOPQMBBw==\r\n"                                                 \
+"-----END EC PARAMETERS-----\r\n"                                      \
+"-----BEGIN EC PRIVATE KEY-----\r\n"                                   \
+"MHcCAQEEIGPu40vCeKMtc/hl1IDBscdu/BYs/4iDZvjVvau+f35/oAoGCCqGSM49\r\n" \
+"AwEHoUQDQgAEaFtMCLfBMZN76p7xmlrnnQRFdA40XbylfuJzPrH7zEmZ5PoPEywt\r\n" \
+"CefuC78E3d63PXHr8oBTsaaxs+QxIaOWpg==\r\n"                             \
+"-----END EC PRIVATE KEY-----\r\n"
+
+typedef psa_send_func_t mbedtlsSendCallback __attribute__((cmse_nonsecure_call));
+typedef psa_recv_func_t mbedtlsReceiveCallback __attribute__((cmse_nonsecure_call));
 
 static int key_type_is_raw_bytes( psa_key_type_t type )
 {
@@ -5719,6 +5789,163 @@ exit:
     if( status != PSA_SUCCESS )
         mbedtls_psa_crypto_free( );
     return( status );
+}
+
+static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation,
+                                           psa_send_func_t* mbedtlsSend,
+                                           psa_recv_func_t* mbedtlsReceive)
+{
+    psa_status_t status = PSA_SUCCESS;
+    mbedtls_ssl_config conf;
+    mbedtls_x509_crt   cacert;
+    mbedtls_x509_crt   clientcert;
+    mbedtls_pk_context clientprk;
+
+    /* Define the cipher suite to be used */
+    static const int ciphersuites[1] = {MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8};
+    mbedtls_ssl_init(&operation->ctx.ssl);
+    mbedtls_ssl_config_init(&conf);
+    mbedtls_x509_crt_init(&cacert);
+    mbedtls_x509_crt_init(&clientcert);
+    mbedtls_pk_init(&clientprk);
+
+    mbedtlsSendCallback send = (mbedtlsSendCallback)cmse_nsfptr_create(mbedtlsSend);
+    mbedtlsReceiveCallback recv = (mbedtlsReceiveCallback)cmse_nsfptr_create(mbedtlsReceive);
+
+    /* Entropy initialized in the crypto init function */ 
+    // mbedtls_entropy_init(&entropy);
+    // mbedtls_ctr_drbg_init(&ctr_drbg);
+    // mbedtls_entropy_add_source(&entropy, mbedtlsEntropyPollHandle,
+    //                             NULL, MBEDTLS_ENTROPY_MIN_PLATFORM, MBEDTLS_ENTROPY_SOURCE_STRONG);
+
+    // if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, 
+    //                                 &entropy,
+    //                                 (const unsigned char *) pers,
+    //                                 strlen(pers))) != 0)
+    // {
+    //     LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
+    //     goto exit;
+    // }
+
+//     if((status = mbedtls_x509_crt_parse(&cacert, 
+//                                      (const char*)CA_CERTIFICATE, 
+//                                      sizeof(CA_CERTIFICATE))) < 0)
+//     {
+// //        LOG_ERR("mbedtls_x509_crt_parse returned -0x%x", -ret);
+//         goto exit;
+//     }
+
+//     if((status = mbedtls_x509_crt_parse(&clientcert, 
+//                                      (const char*)CLIENT_CERTIFICATE, 
+//                                      sizeof(CLIENT_CERTIFICATE))) < 0)
+//     {
+// //        LOG_ERR("mbedtls_x509_crt_parse returned -0x%x", -ret);
+//         goto exit;
+//     }
+
+//     if((status =  mbedtls_pk_parse_key(&clientprk, 
+//                                     (const char*)CLIENT_PRIVATE_KEY, 
+//                                     sizeof(CLIENT_PRIVATE_KEY), NULL, 
+//                                     0)) < 0)
+//     {
+// //        LOG_ERR("mbedtls_pk_parse_key returned -0x%x", -ret);
+//         goto exit;
+//     }
+
+    if((status = mbedtls_ssl_config_defaults(&conf,
+                                             MBEDTLS_SSL_IS_CLIENT,
+                                             MBEDTLS_SSL_TRANSPORT_STREAM,
+                                             MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
+    {
+//        LOG_ERR("mbedtls_ssl_config_defaults returned %d", ret);
+        goto exit;
+    }
+
+    mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+
+    mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+    
+    mbedtls_ssl_conf_own_cert(&conf, 
+                              &clientcert, 
+                              &clientprk);
+    
+    mbedtls_ssl_conf_rng(&conf, 
+                         mbedtls_ctr_drbg_random, 
+                         &global_data.ctr_drbg);
+    
+    mbedtls_ssl_conf_ciphersuites(&conf, ciphersuites);
+    
+    mbedtls_ssl_conf_min_version(&conf, 
+                                 MBEDTLS_SSL_MAJOR_VERSION_3, 
+                                 MBEDTLS_SSL_MINOR_VERSION_3);
+    
+    mbedtls_ssl_conf_max_version(&conf, 
+                                 MBEDTLS_SSL_MAJOR_VERSION_3, 
+                                 MBEDTLS_SSL_MINOR_VERSION_3);
+    
+    mbedtls_ssl_conf_max_frag_len(&conf, MBEDTLS_SSL_MAX_FRAG_LEN_512);
+    // mbedtls_ssl_conf_dbg(&conf, 
+    //                      mDtlsDebug, 
+    //                      &global_data.ssl);
+
+    if((status = mbedtls_ssl_setup(&operation->ctx.ssl, &conf)) != 0)
+    {
+//        LOG_ERR("mbedtls_ssl_setup returned %d", ret);
+        status = PSA_ERROR_NOT_PERMITTED;
+        goto exit;
+    }
+
+    mbedtls_ssl_set_bio(&operation->ctx.ssl, 
+                        NULL, 
+                        send, 
+                        recv,
+                        NULL);
+
+    // mbedtls_ssl_set_timer_cb(&ssl, 
+    //                          NULL , 
+    //                          mSetDtlsTimer, 
+    //                          mGetDTLSTimer);
+
+    return PSA_SUCCESS;
+
+exit:
+    mbedtls_x509_crt_free(&cacert);
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_ssl_free(&operation->ctx.ssl);
+
+    return status;
+}
+
+psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
+                               psa_send_func_t* mbedtlsSend, 
+                               psa_recv_func_t* mbedtlsReceive)
+{
+    psa_status_t status = PSA_SUCCESS;
+
+    status = psa_tls_init_handshake(operation, mbedtlsSend, mbedtlsReceive);
+    if(status != PSA_SUCCESS)
+    {
+        return status;
+    }
+
+
+    return status;
+}
+
+psa_status_t psa_tls_write(psa_tls_operation_t* operation, 
+                           const uint8_t* data, 
+                           size_t data_len)
+{
+    psa_status_t status = PSA_SUCCESS;
+    return status;
+}
+
+psa_status_t psa_tls_read(psa_tls_operation_t* operation,
+                          uint8_t* data, 
+                          size_t data_len)
+{
+    psa_status_t status = PSA_SUCCESS;
+    return status;
 }
 
 #endif /* MBEDTLS_PSA_CRYPTO_C */

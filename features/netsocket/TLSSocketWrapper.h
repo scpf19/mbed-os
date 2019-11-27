@@ -31,6 +31,8 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 
+#include "psa/crypto.h"
+
 // This class requires Mbed TLS SSL/TLS client code
 #if defined(MBEDTLS_SSL_CLI_C) || defined(DOXYGEN_ONLY)
 
@@ -284,6 +286,7 @@ private:
     static int ssl_send(void *ctx, const unsigned char *buf, size_t len);
 
     mbedtls_ssl_context _ssl;
+    psa_tls_operation_t _operation;
 #ifdef MBEDTLS_X509_CRT_PARSE_C
     mbedtls_pk_context _pkctx;
 #endif

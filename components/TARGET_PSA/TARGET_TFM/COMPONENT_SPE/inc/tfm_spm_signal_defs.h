@@ -52,6 +52,8 @@
 #define PSA_KEY_DERIVATION (1UL << PSA_KEY_DERIVATION_POS)
 #define PSA_ENTROPY_INJECT_POS (14UL)
 #define PSA_ENTROPY_INJECT (1UL << PSA_ENTROPY_INJECT_POS)
+#define PSA_TLS_POS (15UL)
+#define PSA_TLS (1UL << PSA_TLS_POS)
 
 /* -----------------------------------------------------------------------------
  * PLATFORM Signals

@@ -2424,6 +2424,112 @@ void psa_crypto_key_derivation_operations(void)
     psa_reply(msg.handle, status);
 }
 
+void psa_tls_operation(void)
+{
+    psa_msg_t msg = { 0 };
+    psa_status_t status = PSA_SUCCESS;
+
+    if (PSA_SUCCESS != psa_get(PSA_TLS, &msg)) {
+        return;
+    }
+
+    switch (msg.type) {
+        case PSA_IPC_CONNECT: {
+            psa_tls_operation_t *psa_operation = mbedtls_calloc(1, sizeof(psa_tls_operation_t));
+            if (psa_operation == NULL) {
+                status = PSA_CONNECTION_REFUSED;
+                break;
+            }
+
+            psa_set_rhandle(msg.handle, psa_operation);
+            break;
+        }
+
+        case PSA_IPC_DISCONNECT: {
+            break;
+        }
+
+        case PSA_IPC_CALL: {
+            uint32_t bytes_read;
+            psa_crypto_ipc_tls_t psa_crypto_ipc = { 0 };
+            if (msg.in_size[0] != sizeof(psa_crypto_ipc_tls_t)) {
+                status = PSA_ERROR_COMMUNICATION_FAILURE;
+                break;
+            }
+
+            bytes_read = psa_read(msg.handle, 0, &psa_crypto_ipc,
+                                  msg.in_size[0]);
+            if (bytes_read != msg.in_size[0]) {
+                SPM_PANIC("SPM read length mismatch");
+            }
+
+            switch (psa_crypto_ipc.func) {
+
+                case PSA_TLS_HANDSHAKE: {
+                    status = psa_tls_handshake(msg.rhandle, psa_crypto_ipc.send, psa_crypto_ipc.recv);
+                    break;
+                }
+
+                case PSA_TLS_WRITE: {
+                    uint8_t* data = NULL;
+                    size_t data_size = msg.in_size[1];
+
+                    if (data_size > 0) {
+                        data = mbedtls_calloc(1, data_size);
+                        if (data == NULL) {
+                            status = PSA_ERROR_INSUFFICIENT_MEMORY;
+                        } else {
+                            bytes_read = psa_read(msg.handle, 1, data, data_size);
+                            if (bytes_read != data_size) {
+                                SPM_PANIC("SPM read length mismatch");
+                            }
+                        }
+                    }
+                    
+                    status = psa_tls_write(msg.rhandle, data, data_size);
+                    break;
+                }
+                case PSA_TLS_READ: {
+                    size_t buffer_size = msg.out_size[0];
+                    uint8_t* buffer = NULL;
+
+                    if (buffer_size > 0) {
+                        buffer = mbedtls_calloc(1, buffer_size);
+                        
+                        if (buffer == NULL) {
+                            status = PSA_ERROR_INSUFFICIENT_MEMORY;
+                            break;
+                        }
+                    }
+
+                    status = psa_tls_read(msg.rhandle, buffer, buffer_size);
+
+                    if (status == PSA_SUCCESS) {
+                        psa_write(msg.handle, 0, buffer, buffer_size);
+                    }
+
+                    mbedtls_free(buffer);
+                    break;
+                }
+
+                default: {
+                    SPM_PANIC("Unexpected function type %d!", (int)(psa_crypto_ipc.func));
+                    break;
+                }
+            }
+
+            break;
+        }
+
+        default: {
+            SPM_PANIC("Unexpected message type %d!", (int)(msg.type));
+            break;
+        }
+    }
+
+    psa_reply(msg.handle, status);
+}
+
 
 void crypto_main(void *ptr)
 {
@@ -2462,6 +2568,9 @@ void crypto_main(void *ptr)
         }
         if (signals & PSA_ENTROPY_INJECT) {
             psa_entropy_operation();
+        }
+        if (signals & PSA_TLS) {
+            psa_tls_operation();
         }
     }
 }

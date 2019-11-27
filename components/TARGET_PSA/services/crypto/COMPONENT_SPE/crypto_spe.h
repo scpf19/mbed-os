@@ -81,6 +81,10 @@ extern "C" {
 #define psa_set_key_domain_parameters psa_sec_set_key_domain_parameters
 #define psa_get_key_domain_parameters psa_sec_get_key_domain_parameters
 
+#define psa_tls_handshake psa_sec_tls_handshake
+#define psa_tls_write psa_sec_tls_write
+#define psa_tls_read psa_sec_tls_read
+
 #define MBEDTLS_PSA_CRYPTO_KEY_FILE_ID_ENCODES_OWNER 1
 
 #include "crypto.h"

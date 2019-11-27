@@ -67,7 +67,7 @@
  * -------------------------------------------------------------------------- */
 #define CRYPTO_SRV_ID 35
 
-#define CRYPTO_SRV_ROT_SRV_COUNT (11UL)
+#define CRYPTO_SRV_ROT_SRV_COUNT (12UL)
 #define CRYPTO_SRV_EXT_ROT_SRV_COUNT (4UL)
 
 
@@ -95,6 +95,8 @@
 #define PSA_KEY_DERIVATION (1UL << PSA_KEY_DERIVATION_POS)
 #define PSA_ENTROPY_INJECT_POS (14UL)
 #define PSA_ENTROPY_INJECT (1UL << PSA_ENTROPY_INJECT_POS)
+#define PSA_TLS_POS (15UL)
+#define PSA_TLS (1UL << PSA_TLS_POS)
 
 #define CRYPTO_SRV_WAIT_ANY_SID_MSK (\
     PSA_CRYPTO_INIT | \
@@ -107,7 +109,8 @@
     PSA_RNG | \
     PSA_CRYPTO_FREE | \
     PSA_KEY_DERIVATION | \
-    PSA_ENTROPY_INJECT)
+    PSA_ENTROPY_INJECT | \
+    PSA_TLS)
 
 
 /* -----------------------------------------------------------------------------

@@ -3761,6 +3761,25 @@ psa_status_t psa_generate_key(const psa_key_attributes_t *attributes,
 
 /**@}*/
 
+/** \defgroup TLS operations
+ * @{
+ */
+
+typedef struct psa_tls_operation_s psa_tls_operation_t;
+
+psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
+                               psa_send_func_t* mbedtlsSend, 
+                               psa_recv_func_t* mbedtlsReceive);
+
+psa_status_t psa_tls_write(psa_tls_operation_t* operation, 
+                           const uint8_t* data, 
+                           size_t data_len);
+
+psa_status_t psa_tls_read(psa_tls_operation_t* operation,
+                          uint8_t* data, 
+                          size_t data_len);
+
+/**@}*/
 #ifdef __cplusplus
 }
 #endif

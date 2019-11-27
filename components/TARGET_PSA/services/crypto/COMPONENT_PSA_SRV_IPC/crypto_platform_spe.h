@@ -103,6 +103,9 @@ typedef enum psa_sec_function_s {
     PSA_RAW_KEY_AGREEMENT,
     PSA_GENERATE_RANDOM,
     PSA_GENERATE_KEY,
+    PSA_TLS_HANDSHAKE,
+    PSA_TLS_WRITE,
+    PSA_TLS_READ,
 } psa_sec_function_t;
 
 /**@}*/
@@ -173,6 +176,16 @@ typedef struct psa_crypto_ipc_asymmetric_s {
     size_t input_length;
     size_t salt_length;
 } psa_crypto_ipc_asymmetric_t;
+
+/** psa_crypto_ipc_tls_s struct used for tls operations
+ * PSA Crypto APIs that need non-secure function pointers for send and receive 
+ * capabilities. 
+ */
+typedef struct psa_crypto_ipc_tls_s {
+    psa_sec_function_t func;
+    psa_send_func_t* send;
+    psa_recv_func_t* recv;
+} psa_crypto_ipc_tls_t;
 
 /**@}*/
 

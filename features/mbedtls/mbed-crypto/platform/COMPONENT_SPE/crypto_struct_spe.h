@@ -79,6 +79,8 @@ extern "C" {
 #include "mbedtls/sha256.h"
 #include "mbedtls/sha512.h"
 
+#include "mbedtls/ssl.h"
+
 struct psa_hash_operation_s
 {
     psa_algorithm_t alg;
@@ -511,6 +513,16 @@ static inline size_t psa_get_key_bits(
 {
     return( attributes->core.bits );
 }
+
+struct psa_tls_operation_s
+{
+    psa_algorithm_t alg;
+    union
+    {
+        unsigned dummy; /* Make the union non-empty even with no supported algorithms. */
+        mbedtls_ssl_context ssl;
+    } ctx;
+};
 
 #ifdef __cplusplus
 }

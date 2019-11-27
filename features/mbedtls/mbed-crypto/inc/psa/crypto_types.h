@@ -340,4 +340,7 @@ typedef uint16_t psa_key_derivation_step_t;
 
 /**@}*/
 
+typedef int (*psa_send_func_t)(void* ctx, const unsigned char* buf, size_t len);
+typedef int (*psa_recv_func_t)(void* ctx, unsigned char* buf, size_t len);
+
 #endif /* PSA_CRYPTO_TYPES_H */

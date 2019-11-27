@@ -48,6 +48,7 @@
 #define PSA_CRYPTO_FREE_ID 0x00000F08
 #define PSA_KEY_DERIVATION_ID 0x00000F09
 #define PSA_ENTROPY_ID 0x00000F0A
+#define PSA_TLS_ID 0x00000F0B
 
 /* -----------------------------------------------------------------------------
  * PLATFORM Service IDs

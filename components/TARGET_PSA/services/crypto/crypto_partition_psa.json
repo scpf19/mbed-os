@@ -94,6 +94,14 @@
       "non_secure_clients": true,
       "minor_version": 1,
       "minor_policy": "STRICT"
+    },
+    {
+        "name": "PSA_TLS_ID",
+        "identifier": "0x00000F0B",
+        "signal": "PSA_TLS",
+        "non_secure_clients": true,
+        "minor_version": 1,
+        "minor_policy": "STRICT"
     }
   ],
   "extern_sids": [

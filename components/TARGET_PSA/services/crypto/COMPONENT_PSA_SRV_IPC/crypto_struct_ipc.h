@@ -311,6 +311,10 @@ static inline size_t psa_get_key_bits(
     return( attributes->core.bits );
 }
 
+struct psa_tls_operation_s {
+    psa_handle_t handle;
+};
+
 #ifdef __cplusplus
 }
 #endif
