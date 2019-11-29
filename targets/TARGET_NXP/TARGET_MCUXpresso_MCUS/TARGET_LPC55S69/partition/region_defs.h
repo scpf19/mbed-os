@@ -31,12 +31,12 @@
 #define BL2_HEAP_SIZE           0x0001000
 #define BL2_MSP_STACK_SIZE      0x0001000
 
-#define S_HEAP_SIZE             0x0004000
+#define S_HEAP_SIZE             0x0010000
 #define S_MSP_STACK_SIZE_INIT   0x0000400
 #define S_MSP_STACK_SIZE        0x0000800
 #define S_PSP_STACK_SIZE        0x0000800
 
-#define NS_HEAP_SIZE            0x0001000
+#define NS_HEAP_SIZE            0x0004000
 #define NS_MSP_STACK_SIZE       0x0000400
 #define NS_PSP_STACK_SIZE       0x0000C00
 
@@ -86,7 +86,7 @@
 /* Increase secure DATA area to run the regression tests */
 //#define S_DATA_SIZE     ((TOTAL_RAM_SIZE / 4) * 3)
 //#else
-#define S_DATA_SIZE     (TOTAL_RAM_SIZE / 2)
+#define S_DATA_SIZE     0x34000// (TOTAL_RAM_SIZE / 2)
 //#endif
 
 #define S_DATA_LIMIT    (S_DATA_START + S_DATA_SIZE - 1)

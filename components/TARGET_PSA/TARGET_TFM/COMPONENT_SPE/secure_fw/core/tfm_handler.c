@@ -91,6 +91,7 @@ void HardFault_Handler(void)
      * a hard fault triggered directly, or another fault that has been
      * escalated.
      */
+    ERROR_MSG("Hello from hardfaul handler\n");
     while (1) {
         ;
     }
@@ -218,6 +219,7 @@ uint32_t SVCHandler_main(uint32_t *svc_args, uint32_t lr)
 
 void tfm_access_violation_handler(void)
 {
+    ERROR_MSG("Hello from access violatin handler\n");
     while (1) {
         ;
     }

@@ -56,10 +56,15 @@
 #define FLASH_AREA_BL2_SIZE             (0x0)
 #endif
 
+/* Offset and size definition in flash area, used by assemble.py */
+#define SECURE_IMAGE_OFFSET             (0x0)
+#define SECURE_IMAGE_MAX_SIZE           (0x00048000)
+#define NON_SECURE_IMAGE_MAX_SIZE       (0x00050000)
+
 /* Secure image */
 #define FLASH_AREA_IMAGE_0_OFFSET       (FLASH_AREA_BL2_OFFSET + \
                                          FLASH_AREA_BL2_SIZE) // 0
-#define FLASH_AREA_IMAGE_0_SIZE         (0x00028000 - FLASH_AREA_BL2_SIZE) // 0x00028000
+#define FLASH_AREA_IMAGE_0_SIZE         (SECURE_IMAGE_MAX_SIZE - FLASH_AREA_BL2_SIZE) // 0x00028000
 
 #define FLASH_SST_AREA_OFFSET           (FLASH_AREA_IMAGE_0_OFFSET + \
                                          FLASH_AREA_IMAGE_0_SIZE)  // 0x00028000
@@ -68,18 +73,13 @@
 /* Non-secure image */
 #define FLASH_AREA_IMAGE_1_OFFSET       (FLASH_SST_AREA_OFFSET +\
                                          FLASH_SST_AREA_SIZE) // 0x00030000
-#define FLASH_AREA_IMAGE_1_SIZE         (0x00068000)
+#define FLASH_AREA_IMAGE_1_SIZE         (NON_SECURE_IMAGE_MAX_SIZE)
 
 #define FLASH_AREA_IMAGE_SCRATCH_OFFSET (FLASH_AREA_IMAGE_1_OFFSET +\
                                          FLASH_AREA_IMAGE_1_SIZE)
 #define FLASH_AREA_IMAGE_SCRATCH_SIZE   (0)
 
-/* Offset and size definition in flash area, used by assemble.py */
-#define SECURE_IMAGE_OFFSET             0x0
-#define SECURE_IMAGE_MAX_SIZE           0x00028000
-
-#define NON_SECURE_IMAGE_OFFSET         0x00030000
-#define NON_SECURE_IMAGE_MAX_SIZE       0x00068000
+#define NON_SECURE_IMAGE_OFFSET         FLASH_AREA_IMAGE_1_OFFSET
 
 /* Flash device name used by BL2 and SST
  * Name is defined in flash driver file: Driver_Flash.c

@@ -2466,7 +2466,12 @@ void psa_tls_operation(void)
             switch (psa_crypto_ipc.func) {
 
                 case PSA_TLS_HANDSHAKE: {
-                    status = psa_tls_handshake(msg.rhandle, psa_crypto_ipc.send, psa_crypto_ipc.recv);
+                    status = psa_tls_handshake(msg.rhandle, 
+                                               psa_crypto_ipc.send, 
+                                               psa_crypto_ipc.recv,
+                                               psa_crypto_ipc.context,
+                                               psa_crypto_ipc.send_buffer,
+                                               psa_crypto_ipc.recv_buffer);
                     break;
                 }
 
@@ -2503,8 +2508,8 @@ void psa_tls_operation(void)
                     }
 
                     status = psa_tls_read(msg.rhandle, buffer, buffer_size);
-
-                    if (status == PSA_SUCCESS) {
+                    printf("psa_tls_read returned %d\n", status);
+                    if (status > 0) {
                         psa_write(msg.handle, 0, buffer, buffer_size);
                     }
 

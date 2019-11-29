@@ -236,7 +236,7 @@ nsapi_error_t TLSSocketWrapper::continue_handshake()
     }
 
     while (true) {
-        ret = psa_tls_handshake(&_operation, (psa_send_func_t *)ssl_send, (psa_recv_func_t *)ssl_recv); //mbedtls_ssl_handshake(&_ssl);
+        ret = psa_tls_handshake(&_operation, (psa_send_func_t *)psa_ssl_send, (psa_recv_func_t *)psa_ssl_recv, this, _sendBuffer, _recvBuffer); //mbedtls_ssl_handshake(&_ssl);
         printf("psa_tls_handshake returned %d\n", ret);
         if (_timeout && (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)) {
             uint32_t flag;
@@ -310,7 +310,7 @@ nsapi_error_t TLSSocketWrapper::send(const void *data, nsapi_size_t size)
             }
         }
 
-        ret = psa_tls_write(&_operation, (const uint8_t*)data, size); //mbedtls_ssl_write(&_ssl, (const unsigned char *) data, size);
+        ret = psa_tls_write(&_operation, (const uint8_t*)data, size);
         printf("psa_tls_write returned %d\n", ret);
         if (_timeout == 0) {
             break;
@@ -363,8 +363,8 @@ nsapi_size_or_error_t TLSSocketWrapper::recv(void *data, nsapi_size_t size)
                 return ret;
             }
         }
-
-        ret = mbedtls_ssl_read(&_ssl, (unsigned char *) data, size);
+        printf("hello from read\n");
+        ret = psa_tls_read(&_operation, (uint8_t*)data, size); //mbedtls_ssl_read(&_ssl, (unsigned char *) data, size);
 
         if (_timeout == 0) {
             break;
@@ -502,6 +502,48 @@ int TLSSocketWrapper::ssl_send(void *ctx, const unsigned char *buf, size_t len)
     }
     // Propagate also Socket errors to SSL, it allows negative error codes to be returned here.
     return size;
+}
+
+int TLSSocketWrapper::psa_ssl_send(void* ctx, size_t len)
+{
+    int size = -1;
+
+    TLSSocketWrapper *my = static_cast<TLSSocketWrapper *>(ctx);
+    if (!my->_transport) {
+        return NSAPI_ERROR_NO_SOCKET;
+    }
+
+    size = my->_transport->send(&my->_sendBuffer, len);
+
+    if (NSAPI_ERROR_WOULD_BLOCK == size) {
+        return MBEDTLS_ERR_SSL_WANT_WRITE;
+    } else if (size < 0) {
+        tr_error("Socket send error %d", size);
+    }
+
+    // Propagate also Socket errors to SSL, it allows negative error codes to be returned here.
+    return len;
+}
+
+int TLSSocketWrapper::psa_ssl_recv(void* ctx, unsigned char* buf, size_t len)
+{
+    int recv;
+
+    TLSSocketWrapper *my = static_cast<TLSSocketWrapper *>(ctx);
+
+    if (!my->_transport) {
+        return NSAPI_ERROR_NO_SOCKET;
+    }
+
+    recv = my->_transport->recv(buf, len);
+
+    if (NSAPI_ERROR_WOULD_BLOCK == recv) {
+        return MBEDTLS_ERR_SSL_WANT_READ;
+    } else if (recv < 0) {
+        tr_error("Socket recv error %d", recv);
+    }
+    // Propagate also Socket errors to SSL, it allows negative error codes to be returned here.
+    return recv;
 }
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)

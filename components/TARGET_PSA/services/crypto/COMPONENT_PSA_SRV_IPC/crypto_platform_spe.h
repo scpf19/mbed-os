@@ -185,6 +185,9 @@ typedef struct psa_crypto_ipc_tls_s {
     psa_sec_function_t func;
     psa_send_func_t* send;
     psa_recv_func_t* recv;
+    void* context;
+    uint8_t* send_buffer;
+    uint8_t* recv_buffer;
 } psa_crypto_ipc_tls_t;
 
 /**@}*/

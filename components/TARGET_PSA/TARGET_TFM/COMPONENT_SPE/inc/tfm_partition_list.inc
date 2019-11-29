@@ -30,7 +30,7 @@ PARTITION_ADD_INIT_FUNC(ATTEST_SRV, attest_main);
  * -------------------------------------------------------------------------- */
 PARTITION_DECLARE(CRYPTO_SRV, 0
     | SPM_PART_FLAG_IPC
-    , "APPLICATION-ROT", 35, NORMAL, 16384);
+    , "APPLICATION-ROT", 35, NORMAL, 32768);
 PARTITION_ADD_INIT_FUNC(CRYPTO_SRV, crypto_main);
 
 /* -----------------------------------------------------------------------------

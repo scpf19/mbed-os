@@ -3769,7 +3769,10 @@ typedef struct psa_tls_operation_s psa_tls_operation_t;
 
 psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
                                psa_send_func_t* mbedtlsSend, 
-                               psa_recv_func_t* mbedtlsReceive);
+                               psa_recv_func_t* mbedtlsReceive,
+                               void* context,
+                               uint8_t* sendBuffer,
+                               uint8_t* recvBuffer);
 
 psa_status_t psa_tls_write(psa_tls_operation_t* operation, 
                            const uint8_t* data, 

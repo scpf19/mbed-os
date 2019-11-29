@@ -4,8 +4,8 @@
   "priority": "NORMAL",
   "id": "0x00000023",
   "entry_point": "crypto_main",
-  "stack_size": "0x4000",
-  "heap_size": "0x400",
+  "stack_size": "0x8000",
+  "heap_size": "0x4000",
   "services": [
     {
       "name": "PSA_CRYPTO_INIT_ID",
@@ -96,12 +96,12 @@
       "minor_policy": "STRICT"
     },
     {
-        "name": "PSA_TLS_ID",
-        "identifier": "0x00000F0B",
-        "signal": "PSA_TLS",
-        "non_secure_clients": true,
-        "minor_version": 1,
-        "minor_policy": "STRICT"
+      "name": "PSA_TLS_ID",
+      "identifier": "0x00000F0B",
+      "signal": "PSA_TLS",
+      "non_secure_clients": true,
+      "minor_version": 1,
+      "minor_policy": "STRICT"
     }
   ],
   "extern_sids": [

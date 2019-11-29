@@ -247,6 +247,7 @@ protected:
     bool is_handshake_started() const;
 
     void event();
+    
 #endif
 
 
@@ -285,8 +286,14 @@ private:
      */
     static int ssl_send(void *ctx, const unsigned char *buf, size_t len);
 
+    static int psa_ssl_send(void* ctx, size_t len);
+
+    static int psa_ssl_recv(void* ctx, unsigned char* buf, size_t len);
+
     mbedtls_ssl_context _ssl;
     psa_tls_operation_t _operation;
+    uint8_t _sendBuffer[MBEDTLS_SSL_OUT_CONTENT_LEN];
+    uint8_t _recvBuffer[MBEDTLS_SSL_IN_CONTENT_LEN];
 #ifdef MBEDTLS_X509_CRT_PARSE_C
     mbedtls_pk_context _pkctx;
 #endif

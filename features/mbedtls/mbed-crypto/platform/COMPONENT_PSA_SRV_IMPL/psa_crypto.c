@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "mbedtls/platform.h"
+#include "mbed_stats.h"
 #if !defined(MBEDTLS_PLATFORM_C)
 #define mbedtls_calloc calloc
 #define mbedtls_free   free
@@ -83,6 +84,7 @@
 #include "mbedtls/xtea.h"
 
 #include "arm_cmse.h"
+#include "secure_utilities.h"
 
 #define ARRAY_LENGTH( array ) ( sizeof( array ) / sizeof( *( array ) ) )
 
@@ -188,6 +190,10 @@ typedef struct
     void (* entropy_free )( mbedtls_entropy_context *ctx );
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
+    uint8_t* send_buffer;
+    uint8_t* recv_buffer;
+    mbedtlsSendCallback mbedtls_send;
+    mbedtlsReceiveCallback mbedtls_recv;
     unsigned initialized : 1;
     unsigned rng_state : 2;
 } psa_global_data_t;
@@ -4862,8 +4868,6 @@ psa_status_t psa_key_derivation_output_key( const psa_key_attributes_t *attribut
     return( status );
 }
 
-
-
 /****************************************************************/
 /* Key derivation */
 /****************************************************************/
@@ -5791,9 +5795,51 @@ exit:
     return( status );
 }
 
-static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation,
-                                           psa_send_func_t* mbedtlsSend,
-                                           psa_recv_func_t* mbedtlsReceive)
+static void psa_tls_debug(void *ctx, int level, const char *file, int line, const char *str)
+{
+    switch (level)
+    {
+    case 1:
+        printf("mbedtls ERROR: %s\r\n", str);
+        break;
+
+    case 2:
+        printf("mbedtls WARNING: %s\r\n", str);
+        break;
+
+    case 3:
+        printf("mbedtls INFO:%s\r\n", str);
+        break;
+
+    case 4:
+    default:
+        printf("mbedtls DEBUG:%s\r\n", str);
+        break;
+    }
+}
+
+static int psa_mbedtls_send(void* ctx, const unsigned char* buf, size_t len)
+{
+    memcpy(global_data.send_buffer, buf, len);
+    
+    return global_data.mbedtls_send(ctx, len);
+}
+
+static int psa_mbedtls_recv(void* ctx, unsigned char* buf, size_t len)
+{
+    int read_bytes = 0;
+
+    read_bytes = global_data.mbedtls_recv(ctx, global_data.recv_buffer, len);
+
+    if(read_bytes > 0)
+    {
+        memcpy(buf, global_data.recv_buffer, read_bytes);
+    }
+
+    return read_bytes;
+}
+
+static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void* ctx)
 {
     psa_status_t status = PSA_SUCCESS;
     mbedtls_ssl_config conf;
@@ -5801,63 +5847,45 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation,
     mbedtls_x509_crt   clientcert;
     mbedtls_pk_context clientprk;
 
+    mbedtls_debug_set_threshold(1);
+
     /* Define the cipher suite to be used */
-    static const int ciphersuites[1] = {MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8};
+    static const int ciphersuites[2] = {MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8, 
+                                        MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256};
+
     mbedtls_ssl_init(&operation->ctx.ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&cacert);
     mbedtls_x509_crt_init(&clientcert);
     mbedtls_pk_init(&clientprk);
 
-    mbedtlsSendCallback send = (mbedtlsSendCallback)cmse_nsfptr_create(mbedtlsSend);
-    mbedtlsReceiveCallback recv = (mbedtlsReceiveCallback)cmse_nsfptr_create(mbedtlsReceive);
+    if((status = mbedtls_x509_crt_parse(&cacert, 
+                                     (const char*)CA_CERTIFICATE, 
+                                     sizeof(CA_CERTIFICATE))) < 0)
+    {
+        goto exit;
+    }
 
-    /* Entropy initialized in the crypto init function */ 
-    // mbedtls_entropy_init(&entropy);
-    // mbedtls_ctr_drbg_init(&ctr_drbg);
-    // mbedtls_entropy_add_source(&entropy, mbedtlsEntropyPollHandle,
-    //                             NULL, MBEDTLS_ENTROPY_MIN_PLATFORM, MBEDTLS_ENTROPY_SOURCE_STRONG);
+    if((status = mbedtls_x509_crt_parse(&clientcert, 
+                                        (const char*)CLIENT_CERTIFICATE, 
+                                        sizeof(CLIENT_CERTIFICATE))) < 0)
+    {
+        goto exit;
+    }
 
-    // if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, 
-    //                                 &entropy,
-    //                                 (const unsigned char *) pers,
-    //                                 strlen(pers))) != 0)
-    // {
-    //     LOG_ERR("mbedtls_ctr_drbg_seed returned %d", ret);
-    //     goto exit;
-    // }
-
-//     if((status = mbedtls_x509_crt_parse(&cacert, 
-//                                      (const char*)CA_CERTIFICATE, 
-//                                      sizeof(CA_CERTIFICATE))) < 0)
-//     {
-// //        LOG_ERR("mbedtls_x509_crt_parse returned -0x%x", -ret);
-//         goto exit;
-//     }
-
-//     if((status = mbedtls_x509_crt_parse(&clientcert, 
-//                                      (const char*)CLIENT_CERTIFICATE, 
-//                                      sizeof(CLIENT_CERTIFICATE))) < 0)
-//     {
-// //        LOG_ERR("mbedtls_x509_crt_parse returned -0x%x", -ret);
-//         goto exit;
-//     }
-
-//     if((status =  mbedtls_pk_parse_key(&clientprk, 
-//                                     (const char*)CLIENT_PRIVATE_KEY, 
-//                                     sizeof(CLIENT_PRIVATE_KEY), NULL, 
-//                                     0)) < 0)
-//     {
-// //        LOG_ERR("mbedtls_pk_parse_key returned -0x%x", -ret);
-//         goto exit;
-//     }
+    if((status =  mbedtls_pk_parse_key(&clientprk, 
+                                       (const char*)CLIENT_PRIVATE_KEY, 
+                                       sizeof(CLIENT_PRIVATE_KEY), NULL, 
+                                       0)) < 0)
+    {
+        goto exit;
+    }
 
     if((status = mbedtls_ssl_config_defaults(&conf,
                                              MBEDTLS_SSL_IS_CLIENT,
                                              MBEDTLS_SSL_TRANSPORT_STREAM,
                                              MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
     {
-//        LOG_ERR("mbedtls_ssl_config_defaults returned %d", ret);
         goto exit;
     }
 
@@ -5882,29 +5910,21 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation,
     mbedtls_ssl_conf_max_version(&conf, 
                                  MBEDTLS_SSL_MAJOR_VERSION_3, 
                                  MBEDTLS_SSL_MINOR_VERSION_3);
-    
-    mbedtls_ssl_conf_max_frag_len(&conf, MBEDTLS_SSL_MAX_FRAG_LEN_512);
-    // mbedtls_ssl_conf_dbg(&conf, 
-    //                      mDtlsDebug, 
-    //                      &global_data.ssl);
+
+    mbedtls_ssl_conf_dbg(&conf, 
+                         psa_tls_debug, 
+                         &operation->ctx.ssl);
 
     if((status = mbedtls_ssl_setup(&operation->ctx.ssl, &conf)) != 0)
     {
-//        LOG_ERR("mbedtls_ssl_setup returned %d", ret);
-        status = PSA_ERROR_NOT_PERMITTED;
         goto exit;
     }
 
     mbedtls_ssl_set_bio(&operation->ctx.ssl, 
-                        NULL, 
-                        send, 
-                        recv,
+                        ctx, 
+                        (mbedtls_ssl_send_t *)psa_mbedtls_send, 
+                        (mbedtls_ssl_recv_t *)psa_mbedtls_recv,
                         NULL);
-
-    // mbedtls_ssl_set_timer_cb(&ssl, 
-    //                          NULL , 
-    //                          mSetDtlsTimer, 
-    //                          mGetDTLSTimer);
 
     return PSA_SUCCESS;
 
@@ -5918,16 +5938,34 @@ exit:
 
 psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
                                psa_send_func_t* mbedtlsSend, 
-                               psa_recv_func_t* mbedtlsReceive)
+                               psa_recv_func_t* mbedtlsReceive,
+                               void* context,
+                               uint8_t* sendBuffer,
+                               uint8_t* recvBuffer)
 {
     psa_status_t status = PSA_SUCCESS;
 
-    status = psa_tls_init_handshake(operation, mbedtlsSend, mbedtlsReceive);
+    global_data.send_buffer = sendBuffer;
+    global_data.recv_buffer = recvBuffer;
+    global_data.mbedtls_send = (mbedtlsSendCallback)cmse_nsfptr_create(mbedtlsSend);
+    global_data.mbedtls_recv = (mbedtlsReceiveCallback)cmse_nsfptr_create(mbedtlsReceive);
+
+    status = psa_tls_init_handshake(operation, context);
     if(status != PSA_SUCCESS)
     {
         return status;
     }
 
+    while((status = mbedtls_ssl_handshake(&operation->ctx.ssl)) != 0)
+    {
+        if(status != MBEDTLS_ERR_SSL_WANT_READ && 
+           status != MBEDTLS_ERR_SSL_WANT_WRITE)
+        {
+            printf("something wrong\n");
+            //TODO implement close session function
+            break;
+        }
+    }
 
     return status;
 }
@@ -5937,6 +5975,9 @@ psa_status_t psa_tls_write(psa_tls_operation_t* operation,
                            size_t data_len)
 {
     psa_status_t status = PSA_SUCCESS;
+
+    status = mbedtls_ssl_write(&operation->ctx.ssl, data, data_len);
+
     return status;
 }
 
@@ -5945,6 +5986,9 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
                           size_t data_len)
 {
     psa_status_t status = PSA_SUCCESS;
+
+    status = mbedtls_ssl_read(&operation->ctx.ssl, data, data_len);
+
     return status;
 }
 

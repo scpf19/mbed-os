@@ -25,7 +25,7 @@
 #define EXC_NUM_PENDSV          (14)
 #define EXC_NUM_SYSTICK         (15)
 
-#define printf(...)
+//#define printf(...)
 
 /* Disable NS exceptions by setting NS PRIMASK to 1 */
 #define TFM_NS_EXC_DISABLE()    __TZ_set_PRIMASK_NS(1)

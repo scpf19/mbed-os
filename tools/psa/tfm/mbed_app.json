@@ -1,6 +1,11 @@
 {
     "name": "tfm_build",
     "requires" : ["psa-services", "tfm", "tfm-s", "psa"],
-    "macros": ["MBEDTLS_CIPHER_MODE_CTR", "MBEDTLS_CMAC_C"],
+    "macros": ["MBEDTLS_CIPHER_MODE_CTR", "MBEDTLS_CMAC_C", 
+               "MBED_HEAP_STATS_ENABLED=1",
+               "MBED_STACK_STATS_ENABLED=1",
+               "MBED_MEM_TRACING_ENABLED=1",
+               "TFM_CORE_DEBUG"
+    ],
     "artifact_name": "tfm"
 }

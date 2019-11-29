@@ -1635,7 +1635,10 @@ psa_status_t mbedtls_psa_inject_entropy(const uint8_t *seed,
 
 psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
                                psa_send_func_t* mbedtlsSend, 
-                               psa_recv_func_t* mbedtlsReceive)
+                               psa_recv_func_t* mbedtlsReceive,
+                               void* context,
+                               uint8_t* sendBuffer,
+                               uint8_t* recvBuffer)
 {
     psa_status_t status = ipc_connect(PSA_TLS_ID, &operation->handle);
     if (status != PSA_SUCCESS) {
@@ -1645,11 +1648,14 @@ psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
     psa_crypto_ipc_tls_t psa_crypto_ipc = {
         .func = PSA_TLS_HANDSHAKE,
         .send = mbedtlsSend,
-        .recv = mbedtlsReceive
+        .recv = mbedtlsReceive,
+        .context = context,
+        .send_buffer = sendBuffer,
+        .recv_buffer = recvBuffer
     };
 
     psa_invec in_vec = { &psa_crypto_ipc, sizeof(psa_crypto_ipc) };
-    
+
     status = ipc_call(&operation->handle, &in_vec, 1, NULL, 0, false);
     return (status);
 }
@@ -1665,7 +1671,10 @@ psa_status_t psa_tls_write(psa_tls_operation_t* operation,
     psa_crypto_ipc_tls_t psa_crypto_ipc = {
         .func   = PSA_TLS_WRITE,
         .send = NULL,
-        .recv = NULL
+        .recv = NULL,
+        .context = NULL,
+        .send_buffer = NULL,
+        .recv_buffer = NULL
     };
 
     psa_invec in_vec[2] = {
@@ -1689,7 +1698,10 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
     psa_crypto_ipc_tls_t psa_crypto_ipc = {
         .func   = PSA_TLS_READ,
         .send = NULL,
-        .recv = NULL
+        .recv = NULL,
+        .context = NULL,
+        .send_buffer = NULL,
+        .recv_buffer = NULL
     };
 
     psa_invec in_vec = { &psa_crypto_ipc, sizeof(psa_crypto_ipc) };
