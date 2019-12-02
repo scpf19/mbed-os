@@ -475,6 +475,7 @@ struct psa_tls_operation_s
     {
         unsigned dummy; /* Make the union non-empty even with no supported algorithms. */
         mbedtls_ssl_context ssl;
+        mbedtls_ssl_config conf;
     } ctx;
 };
 

@@ -2508,7 +2508,7 @@ void psa_tls_operation(void)
                     }
 
                     status = psa_tls_read(msg.rhandle, buffer, buffer_size);
-                    printf("psa_tls_read returned %d\n", status);
+
                     if (status > 0) {
                         psa_write(msg.handle, 0, buffer, buffer_size);
                     }

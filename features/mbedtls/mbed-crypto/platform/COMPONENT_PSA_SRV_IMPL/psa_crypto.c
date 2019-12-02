@@ -190,6 +190,7 @@ typedef struct
     void (* entropy_free )( mbedtls_entropy_context *ctx );
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ssl_config conf;
     uint8_t* send_buffer;
     uint8_t* recv_buffer;
     mbedtlsSendCallback mbedtls_send;
@@ -5821,13 +5822,15 @@ static void psa_tls_debug(void *ctx, int level, const char *file, int line, cons
 static int psa_mbedtls_send(void* ctx, const unsigned char* buf, size_t len)
 {
     memcpy(global_data.send_buffer, buf, len);
-    
+
     return global_data.mbedtls_send(ctx, len);
 }
 
 static int psa_mbedtls_recv(void* ctx, unsigned char* buf, size_t len)
 {
     int read_bytes = 0;
+
+    memset(global_data.recv_buffer, 0, sizeof(global_data.recv_buffer));
 
     read_bytes = global_data.mbedtls_recv(ctx, global_data.recv_buffer, len);
 
@@ -5842,19 +5845,21 @@ static int psa_mbedtls_recv(void* ctx, unsigned char* buf, size_t len)
 static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void* ctx)
 {
     psa_status_t status = PSA_SUCCESS;
-    mbedtls_ssl_config conf;
     mbedtls_x509_crt   cacert;
     mbedtls_x509_crt   clientcert;
     mbedtls_pk_context clientprk;
 
     mbedtls_debug_set_threshold(1);
 
-    /* Define the cipher suite to be used */
+    /* Define the cipher suite to be used.
+     * MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 is required for the Mosquitto 
+     * broker. 
+     */
     static const int ciphersuites[2] = {MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8, 
                                         MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256};
 
     mbedtls_ssl_init(&operation->ctx.ssl);
-    mbedtls_ssl_config_init(&conf);
+    mbedtls_ssl_config_init(&global_data.conf);
     mbedtls_x509_crt_init(&cacert);
     mbedtls_x509_crt_init(&clientcert);
     mbedtls_pk_init(&clientprk);
@@ -5881,7 +5886,7 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void*
         goto exit;
     }
 
-    if((status = mbedtls_ssl_config_defaults(&conf,
+    if((status = mbedtls_ssl_config_defaults(&global_data.conf,
                                              MBEDTLS_SSL_IS_CLIENT,
                                              MBEDTLS_SSL_TRANSPORT_STREAM,
                                              MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
@@ -5889,33 +5894,33 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void*
         goto exit;
     }
 
-    mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+    mbedtls_ssl_conf_authmode(&global_data.conf, MBEDTLS_SSL_VERIFY_REQUIRED);
 
-    mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+    mbedtls_ssl_conf_ca_chain(&global_data.conf, &cacert, NULL);
     
-    mbedtls_ssl_conf_own_cert(&conf, 
+    mbedtls_ssl_conf_own_cert(&global_data.conf, 
                               &clientcert, 
                               &clientprk);
     
-    mbedtls_ssl_conf_rng(&conf, 
+    mbedtls_ssl_conf_rng(&global_data.conf, 
                          mbedtls_ctr_drbg_random, 
                          &global_data.ctr_drbg);
     
-    mbedtls_ssl_conf_ciphersuites(&conf, ciphersuites);
+    mbedtls_ssl_conf_ciphersuites(&global_data.conf, ciphersuites);
     
-    mbedtls_ssl_conf_min_version(&conf, 
+    mbedtls_ssl_conf_min_version(&global_data.conf, 
                                  MBEDTLS_SSL_MAJOR_VERSION_3, 
                                  MBEDTLS_SSL_MINOR_VERSION_3);
     
-    mbedtls_ssl_conf_max_version(&conf, 
+    mbedtls_ssl_conf_max_version(&global_data.conf, 
                                  MBEDTLS_SSL_MAJOR_VERSION_3, 
                                  MBEDTLS_SSL_MINOR_VERSION_3);
 
-    mbedtls_ssl_conf_dbg(&conf, 
+    mbedtls_ssl_conf_dbg(&global_data.conf, 
                          psa_tls_debug, 
                          &operation->ctx.ssl);
 
-    if((status = mbedtls_ssl_setup(&operation->ctx.ssl, &conf)) != 0)
+    if((status = mbedtls_ssl_setup(&operation->ctx.ssl, &global_data.conf)) != 0)
     {
         goto exit;
     }
@@ -5930,7 +5935,8 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void*
 
 exit:
     mbedtls_x509_crt_free(&cacert);
-    mbedtls_ssl_config_free(&conf);
+    mbedtls_x509_crt_free(&clientcert);
+    mbedtls_ssl_config_free(&global_data.conf);
     mbedtls_ssl_free(&operation->ctx.ssl);
 
     return status;
@@ -5961,7 +5967,6 @@ psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
         if(status != MBEDTLS_ERR_SSL_WANT_READ && 
            status != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
-            printf("something wrong\n");
             //TODO implement close session function
             break;
         }
@@ -5976,6 +5981,11 @@ psa_status_t psa_tls_write(psa_tls_operation_t* operation,
 {
     psa_status_t status = PSA_SUCCESS;
 
+    if(operation->ctx.ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    {
+        return PSA_ERROR_BAD_STATE;
+    }
+
     status = mbedtls_ssl_write(&operation->ctx.ssl, data, data_len);
 
     return status;
@@ -5986,6 +5996,11 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
                           size_t data_len)
 {
     psa_status_t status = PSA_SUCCESS;
+
+    if(operation->ctx.ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    {
+        return PSA_ERROR_BAD_STATE;
+    }
 
     status = mbedtls_ssl_read(&operation->ctx.ssl, data, data_len);
 
