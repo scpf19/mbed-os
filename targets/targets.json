@@ -2112,12 +2112,12 @@
         "overrides": {
             "non-secure-rom-start": "0x00050000",
             "non-secure-rom-size": "0x50000",
-            "non-secure-ram-start": "0x20034000",
-            "non-secure-ram-size": "0x10000",
+            "non-secure-ram-start": "0x20022000",
+            "non-secure-ram-size": "0x22000",
             "secure-rom-start": "0x10000000",
             "secure-rom-size": "0x48000",
             "secure-ram-start": "0x30000000",
-            "secure-ram-size": "0x34000",
+            "secure-ram-size": "0x22000",
             "tickless-from-us-ticker": true,
             "init-us-ticker-at-boot": true
         },
@@ -2151,12 +2151,12 @@
         "overrides": {
             "non-secure-rom-start": "0x00050000",
             "non-secure-rom-size": "0x50000",
-            "non-secure-ram-start": "0x20034000",
-            "non-secure-ram-size": "0x10000",
+            "non-secure-ram-start": "0x20022000",
+            "non-secure-ram-size": "0x22000",
             "secure-rom-start": "0x10000000",
             "secure-rom-size": "0x48000",
             "secure-ram-start": "0x30000000",
-            "secure-ram-size": "0x34000"
+            "secure-ram-size": "0x22000"
         }
     },
     "NUCLEO_F030R8": {
