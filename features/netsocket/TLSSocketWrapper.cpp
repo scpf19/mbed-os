@@ -236,7 +236,12 @@ nsapi_error_t TLSSocketWrapper::continue_handshake()
     }
 
     while (true) {
-        ret = psa_tls_handshake(&_operation, (psa_send_func_t *)psa_ssl_send, (psa_recv_func_t *)psa_ssl_recv, this, _sendBuffer, _recvBuffer); //mbedtls_ssl_handshake(&_ssl);
+        ret = psa_tls_handshake(&_operation, 
+                                (psa_send_func_t *)psa_ssl_send, 
+                                (psa_recv_func_t *)psa_ssl_recv, 
+                                this, 
+                                _sendBuffer, 
+                                _recvBuffer); 
 
         if (_timeout && (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)) {
             uint32_t flag;
@@ -364,7 +369,7 @@ nsapi_size_or_error_t TLSSocketWrapper::recv(void *data, nsapi_size_t size)
             }
         }
 
-        ret = psa_tls_read(&_operation, (uint8_t*)data, size); //mbedtls_ssl_read(&_ssl, (unsigned char *) data, size);
+        ret = psa_tls_read(&_operation, (uint8_t*)data, size);
 
         if (_timeout == 0) {
             break;
@@ -640,7 +645,7 @@ nsapi_error_t TLSSocketWrapper::close()
     int ret = 0;
     if (_handshake_completed) {
         _transport->set_blocking(true);
-        ret = mbedtls_ssl_close_notify(&_ssl);
+        ret = psa_tls_close(&_operation);
         if (ret) {
             print_mbedtls_error("mbedtls_ssl_close_notify", ret);
         }

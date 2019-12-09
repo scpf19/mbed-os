@@ -1763,7 +1763,6 @@ static psa_status_t psa_finish_key_creation(
             if( status == PSA_SUCCESS )
                 status = psa_save_persistent_key( &slot->attr,
                                                   buffer, length );
-
             mbedtls_platform_zeroize( buffer, buffer_size );
             mbedtls_free( buffer );
         }
@@ -5615,7 +5614,7 @@ psa_status_t psa_generate_key( const psa_key_attributes_t *attributes,
     psa_status_t status;
     psa_key_slot_t *slot = NULL;
     psa_se_drv_table_entry_t *driver = NULL;
-
+    
     /* Reject any attempt to create a zero-length key so that we don't
      * risk tripping up later, e.g. on a malloc(0) that returns NULL. */
     if( psa_get_key_bits( attributes ) == 0 )
@@ -5625,7 +5624,7 @@ psa_status_t psa_generate_key( const psa_key_attributes_t *attributes,
                                      attributes, handle, &slot, &driver );
     if( status != PSA_SUCCESS )
         goto exit;
-
+    
 #if defined(MBEDTLS_PSA_CRYPTO_SE_C)
     if( driver != NULL )
     {
@@ -5967,7 +5966,6 @@ psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
         if(status != MBEDTLS_ERR_SSL_WANT_READ && 
            status != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
-            //TODO implement close session function
             break;
         }
     }
@@ -6003,6 +6001,23 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
     }
 
     status = mbedtls_ssl_read(&operation->ctx.ssl, data, data_len);
+
+    return status;
+}
+
+psa_status_t psa_tls_close(psa_tls_operation_t* operation)
+{
+    psa_status_t status = PSA_SUCCESS;
+
+    if(operation->ctx.ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
+    {
+        return PSA_ERROR_BAD_STATE;
+    }
+
+    status = mbedtls_ssl_close_notify(&operation->ctx.ssl);
+
+    mbedtls_ssl_config_free(&global_data.conf);
+    mbedtls_ssl_free(&operation->ctx.ssl);
 
     return status;
 }

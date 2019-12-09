@@ -1709,7 +1709,27 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
 
     psa_status_t status = ipc_call(&operation->handle, &in_vec, 1, &out_vec, 1, false);
 
-//    printf("psa_tls_read data_len = %d \n", data_len);
+    return (status);
+}
+
+psa_status_t psa_tls_close(psa_tls_operation_t* operation)
+{
+    if (!(operation->handle != PSA_NULL_HANDLE)) {
+        return (PSA_ERROR_BAD_STATE);
+    }
+
+    psa_crypto_ipc_tls_t psa_crypto_ipc = {
+        .func   = PSA_TLS_CLOSE,
+        .send = NULL,
+        .recv = NULL,
+        .context = NULL,
+        .send_buffer = NULL,
+        .recv_buffer = NULL
+    };
+
+    psa_invec in_vec = { &psa_crypto_ipc, sizeof(psa_crypto_ipc) };
+
+    psa_status_t status = ipc_call(&operation->handle, &in_vec, 1, NULL, 0, true);
 
     return (status);
 }

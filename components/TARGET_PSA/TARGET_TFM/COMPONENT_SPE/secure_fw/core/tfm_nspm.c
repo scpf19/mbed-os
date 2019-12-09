@@ -312,7 +312,7 @@ psa_status_t tfm_nspm_thread_entry(void)
 {
 #ifdef TFM_CORE_DEBUG
     /* Jumps to non-secure code */
-    LOG_MSG("Jumping to non-secure code...");
+    LOG_MSG("Jumping to non-secure code...\n");
 #endif
 
     jump_to_ns_code();

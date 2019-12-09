@@ -2516,7 +2516,10 @@ void psa_tls_operation(void)
                     mbedtls_free(buffer);
                     break;
                 }
-
+                case PSA_TLS_CLOSE: {
+                    status = psa_tls_close(msg.rhandle);
+                    break;
+                }
                 default: {
                     SPM_PANIC("Unexpected function type %d!", (int)(psa_crypto_ipc.func));
                     break;

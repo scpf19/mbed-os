@@ -357,10 +357,9 @@ psa_status_t psa_save_persistent_key( const psa_core_key_attributes_t *attr,
         return( PSA_ERROR_INSUFFICIENT_MEMORY );
 
     psa_format_key_data_for_storage( data, data_length, attr, storage_data );
-
+    
     status = psa_crypto_storage_store( attr->id,
                                        storage_data, storage_data_length );
-
     mbedtls_free( storage_data );
 
     return( status );

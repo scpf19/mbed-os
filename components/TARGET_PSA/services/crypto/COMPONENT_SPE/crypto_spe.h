@@ -84,6 +84,7 @@ extern "C" {
 #define psa_tls_handshake psa_sec_tls_handshake
 #define psa_tls_write psa_sec_tls_write
 #define psa_tls_read psa_sec_tls_read
+#define psa_tls_close psa_sec_tls_close
 
 #define MBEDTLS_PSA_CRYPTO_KEY_FILE_ID_ENCODES_OWNER 1
 

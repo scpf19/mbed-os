@@ -169,7 +169,7 @@ psa_handle_t psa_connect(uint32_t sid, uint32_t minor_version)
         .cb_mem = &msg_sem_storage,
         .cb_size = sizeof(msg_sem_storage),
     };
-
+    
     spm_pending_connect_msg_t msg = {
         .min_version = minor_version,
         .rc = PSA_NULL_HANDLE,

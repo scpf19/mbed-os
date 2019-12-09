@@ -3782,6 +3782,8 @@ psa_status_t psa_tls_read(psa_tls_operation_t* operation,
                           uint8_t* data, 
                           size_t data_len);
 
+psa_status_t psa_tls_close(psa_tls_operation_t* operation);
+
 /**@}*/
 #ifdef __cplusplus
 }

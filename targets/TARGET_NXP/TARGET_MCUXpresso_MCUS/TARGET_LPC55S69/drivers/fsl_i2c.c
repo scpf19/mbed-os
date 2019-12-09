@@ -564,6 +564,7 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
         {
             if ((xfer->direction == kI2C_Read) && (xfer->dataSize > 0))
             {
+                
                 /* Receive Data. */
                 result = I2C_MasterReadBlocking(base, xfer->data, xfer->dataSize, xfer->flags);
             }

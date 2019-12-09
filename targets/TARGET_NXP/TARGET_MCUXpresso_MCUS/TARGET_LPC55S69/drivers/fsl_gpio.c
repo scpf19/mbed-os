@@ -82,7 +82,8 @@ void GPIO_PortInit(GPIO_Type *base, uint32_t port)
  * param config GPIO pin configuration pointer
  */
 void GPIO_PinInit(GPIO_Type *base, uint32_t port, uint32_t pin, const gpio_pin_config_t *config)
-{
+{   
+    printf("hello from GPIO init");
     if (config->pinDirection == kGPIO_DigitalInput)
     {
 #if defined(FSL_FEATURE_GPIO_DIRSET_AND_DIRCLR) && (FSL_FEATURE_GPIO_DIRSET_AND_DIRCLR)

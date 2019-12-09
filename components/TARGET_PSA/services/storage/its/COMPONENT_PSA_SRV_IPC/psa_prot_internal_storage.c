@@ -87,10 +87,11 @@ psa_status_t psa_its_get_info(psa_storage_uid_t uid, struct psa_storage_info_t *
     psa_invec msg = { &uid, sizeof(uid) };
     psa_outvec resp = { &info, sizeof(info) };
     psa_handle_t conn = psa_connect(PSA_ITS_INFO, 1);
+
     if (conn <= PSA_NULL_HANDLE) {
         return PSA_ERROR_STORAGE_FAILURE;
     }
-
+    
     psa_status_t status = psa_call(conn, &msg, 1, &resp, 1);
 
     *p_info = info;

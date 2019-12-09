@@ -337,7 +337,7 @@ status_t I2C_MasterTransferBlocking(I2C_Type *base, i2c_master_transfer_t *xfer)
     int i;
 
     assert(xfer);
-
+    
     /* If repeated start is requested, send repeated start. */
     if (!(xfer->flags & kI2C_TransferNoStartFlag))
     {

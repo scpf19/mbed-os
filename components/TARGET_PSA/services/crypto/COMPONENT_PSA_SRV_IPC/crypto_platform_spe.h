@@ -106,6 +106,7 @@ typedef enum psa_sec_function_s {
     PSA_TLS_HANDSHAKE,
     PSA_TLS_WRITE,
     PSA_TLS_READ,
+    PSA_TLS_CLOSE,
 } psa_sec_function_t;
 
 /**@}*/
