@@ -3767,6 +3767,26 @@ psa_status_t psa_generate_key(const psa_key_attributes_t *attributes,
 
 typedef struct psa_tls_operation_s psa_tls_operation_t;
 
+/**
+ * \brief Execute a TLS handshake.
+ * 
+ * This function implements a TLS handshake with a connected server. This function
+ * needs two non-secure function pointer to send and receive messages. To provide 
+ * the generated messages to the non-secure world, this function also needs two 
+ * pointer to message buffers in the non-secure world. 
+ * 
+ * \param[in,out]   operation           Active TLS operation
+ * \param[in]       mbedtlsSend         Non-secure function pointer to send messages
+ * \param[in]       mbedtlsReceive      Non-secure function pointer to receive messages
+ * \param[in]       context             Pointer to the socket object of the used TLSSocket
+ * \param[in]       sendBuffer          Pointer to a buffer in the non-secure world 
+ * \param[in]       recvBuffer          Pointer to a buffer in the non-secure world 
+ * 
+ * \retval #PSA_SUCCESS
+ *         Success.
+ * \retval MBEDTLS_ERROR
+ *         In any other case the function return an MBEDTLS specific error
+ */
 psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
                                psa_send_func_t* mbedtlsSend, 
                                psa_recv_func_t* mbedtlsReceive,
@@ -3774,14 +3794,59 @@ psa_status_t psa_tls_handshake(psa_tls_operation_t* operation,
                                uint8_t* sendBuffer,
                                uint8_t* recvBuffer);
 
+/**
+ * \brief Send an application data in an active TLS session. 
+ * 
+ * This function encrypts and sends data to a connected server within an active 
+ * TLS session. 
+ * 
+ * \param[in,out]   operation           Active TLS operation
+ * \param[in]       data                Message data to be send
+ * \param[in]       dataLen             Length of the provided message
+ * 
+ * \retval #PSA_SUCCESS
+ *         Success.
+ * \retval #PSA_ERROR_BAD_STATE
+ *         If no TLS session is established
+ * \retval MBEDTLS_ERROR
+ *         In any other case the function return an MBEDTLS specific error
+ */
 psa_status_t psa_tls_write(psa_tls_operation_t* operation, 
                            const uint8_t* data, 
-                           size_t data_len);
+                           size_t dataLen);
 
+/**
+ * \brief Decrypt a received message in an active TLS sesssion.
+ * 
+ * This function decrypts a received message within an active TLS session.
+ * 
+ * \param[in,out]   operation           Active TLS operation
+ * \param[in,out]   data                Data buffer where the decrypted message is placed
+ * \param[in]       dataLen             Length data buffer
+ * \retval #PSA_SUCCESS
+ *         Success.
+ * \retval #PSA_ERROR_BAD_STATE
+ *         If no TLS session is established
+ * \retval MBEDTLS_ERROR
+ *         In any other case the function return an MBEDTLS specific error
+ */
 psa_status_t psa_tls_read(psa_tls_operation_t* operation,
                           uint8_t* data, 
-                          size_t data_len);
+                          size_t dataLen);
 
+/**
+ * \brief Close an active TLS session. 
+ * 
+ * This function closes an active TLS session.
+ * 
+ * \param[in]       operation           Active TLS operation
+ * \retval #PSA_SUCCESS
+ *         Success.
+ * \retval #PSA_ERROR_BAD_STATE
+ *         If no TLS session is established
+ * \retval MBEDTLS_ERROR
+ *         In any other case the function return an MBEDTLS specific error
+ */
 psa_status_t psa_tls_close(psa_tls_operation_t* operation);
 
 /**@}*/

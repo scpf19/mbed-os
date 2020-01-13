@@ -468,6 +468,7 @@ static int ecdh_get_params_internal( mbedtls_ecdh_context_mbed *ctx,
     return( 0 );
 }
 
+#if !defined(MBEDTLS_ECDH_ALT)
 /*
  * Get parameters from a keypair
  */
@@ -520,6 +521,7 @@ int mbedtls_ecdh_get_params( mbedtls_ecdh_context *ctx,
     }
 #endif
 }
+#endif /* MBEDTLS_ECDH_ALT */
 
 static int ecdh_make_public_internal( mbedtls_ecdh_context_mbed *ctx,
                                       size_t *olen, int point_format,

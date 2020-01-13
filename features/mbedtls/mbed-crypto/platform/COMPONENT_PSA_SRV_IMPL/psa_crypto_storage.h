@@ -363,7 +363,7 @@ psa_status_t psa_crypto_stop_transaction( void );
  *
  * 0xffffffNN = special file; 0x74 = 't' for transaction.
  */
-#define PSA_CRYPTO_ITS_TRANSACTION_UID ( (psa_key_id_t) 0xffffff74 )
+#define PSA_CRYPTO_ITS_TRANSACTION_UID ( (psa_storage_uid_t) 0xffffff74 ) // changed by scpf psa_key_id_t to psa_storage_uid_t!
 
 #endif /* PSA_CRYPTO_STORAGE_HAS_TRANSACTIONS */
 

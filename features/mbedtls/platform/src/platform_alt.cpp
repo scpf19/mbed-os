@@ -19,7 +19,7 @@
   */
 
 #include "mbedtls/platform.h"
-#if defined(MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT)
+#if defined(MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT) && !SSS_HAVE_SE
 #include "platform/SingletonPtr.h"
 #include "platform/PlatformMutex.h"
 

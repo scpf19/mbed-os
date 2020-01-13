@@ -1,7 +1,16 @@
 {
     "name": "tfm_build",
-    "requires" : ["psa-services", "tfm", "tfm-s", "psa"],
+    "requires" : ["psa-services", "tfm", "tfm-s", "psa",
+                  "se050_sss_lib"],
     "macros": ["MBEDTLS_CIPHER_MODE_CTR", "MBEDTLS_CMAC_C",
-               "TFM_CORE_DEBUG"],
-    "artifact_name": "tfm"
+                "TFM_CORE_DEBUG"],
+    "artifact_name": "tfm",
+    "target_overrides": {
+        "LPC55S69_S": {
+            "se050_sss_lib.i2c_sda"                 : "I2C_SDA",
+            "se050_sss_lib.i2c_scl"                 : "I2C_SCL",
+            "se050_sss_lib.reset"                   : "D3",
+            "se050_sss_lib.frequency"               : 1200000
+        }
+    }
 }

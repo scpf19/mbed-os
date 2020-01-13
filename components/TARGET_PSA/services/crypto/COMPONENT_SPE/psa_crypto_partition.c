@@ -4,7 +4,6 @@
 #include "psa/client.h"
 #include "psa/service.h"
 
-
 #define PSA_CRYPTO_SECURE 1
 #include "crypto_spe.h"
 #include "crypto_platform_spe.h"
@@ -20,6 +19,11 @@
 #endif
 
 #include "mbed_assert.h"
+
+#if defined(MBEDTLS_PSA_CRYPTO_SE_C)
+#include "crypto_se_driver.h"
+#include "psa_crypto_se.h"
+#endif /* MBEDTLS_PSA_CRYPTO_SE_C */
 
 // ---------------------------------- Macros -----------------------------------
 #if !defined(MIN)

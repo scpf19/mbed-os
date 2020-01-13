@@ -32,6 +32,11 @@
 
 #include "psa_crypto_core.h"
 #include "psa_crypto_invasive.h"
+
+#if SSS_HAVE_SE
+#include "psa_se050.h"
+#endif /* SSS_HAVE_SE */
+
 #if defined(MBEDTLS_PSA_CRYPTO_SE_C)
 #include "psa_crypto_se.h"
 #endif
@@ -103,7 +108,7 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 /****************************************************************/
 /* Global data, support functions and library management */
 /****************************************************************/
-
+#if SSS_HAVE_SE
 #define CA_CERTIFICATE                                                  \
 "-----BEGIN CERTIFICATE-----\r\n"                                       \
 "MIICrDCCAlKgAwIBAgICEAAwCgYIKoZIzj0EAwIwga0xCzAJBgNVBAYTAkNIMRQw\r\n"  \
@@ -170,6 +175,7 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 "AwEHoUQDQgAEaFtMCLfBMZN76p7xmlrnnQRFdA40XbylfuJzPrH7zEmZ5PoPEywt\r\n" \
 "CefuC78E3d63PXHr8oBTsaaxs+QxIaOWpg==\r\n"                             \
 "-----END EC PRIVATE KEY-----\r\n"
+#endif /* SSS_HAVE_SE */
 
 typedef psa_send_func_t mbedtlsSendCallback __attribute__((cmse_nonsecure_call));
 typedef psa_recv_func_t mbedtlsReceiveCallback __attribute__((cmse_nonsecure_call));
@@ -195,6 +201,7 @@ typedef struct
     uint8_t* recv_buffer;
     mbedtlsSendCallback mbedtls_send;
     mbedtlsReceiveCallback mbedtls_recv;
+    mbedtls_platform_context ctx_plat;
     unsigned initialized : 1;
     unsigned rng_state : 2;
 } psa_global_data_t;
@@ -5614,7 +5621,6 @@ psa_status_t psa_generate_key( const psa_key_attributes_t *attributes,
     psa_status_t status;
     psa_key_slot_t *slot = NULL;
     psa_se_drv_table_entry_t *driver = NULL;
-    
     /* Reject any attempt to create a zero-length key so that we don't
      * risk tripping up later, e.g. on a malloc(0) that returns NULL. */
     if( psa_get_key_bits( attributes ) == 0 )
@@ -5764,7 +5770,13 @@ psa_status_t psa_crypto_init( void )
     if( status != PSA_SUCCESS )
         goto exit;
 
-#if defined(MBEDTLS_PSA_CRYPTO_SE_C)
+#if SSS_HAVE_SE
+    mbedtls_platform_setup(&global_data.ctx_plat);
+    //status = se050_init();
+    /* TODO_scpf add entropy */ 
+#endif /* SSS_HAVE_SE */
+
+#if defined(MBEDTLS_PSA_CRYPTO_SE_C) 
     status = psa_init_all_se_drivers( );
     if( status != PSA_SUCCESS )
         goto exit;

@@ -2110,14 +2110,14 @@
         "post_binary_hook": {"function": "LPC55S69Code.binary_hook"},
         "secure_image_filename": "tfm.bin",
         "overrides": {
-            "non-secure-rom-start": "0x00050000",
-            "non-secure-rom-size": "0x50000",
-            "non-secure-ram-start": "0x20022000",
-            "non-secure-ram-size": "0x22000",
+            "non-secure-rom-start": "0x00058000",
+            "non-secure-rom-size": "0x40000",
+            "non-secure-ram-start": "0x2002C000",
+            "non-secure-ram-size": "0x18000",
             "secure-rom-start": "0x10000000",
-            "secure-rom-size": "0x48000",
+            "secure-rom-size": "0x50000",
             "secure-ram-start": "0x30000000",
-            "secure-ram-size": "0x22000",
+            "secure-ram-size": "0x2C000",
             "tickless-from-us-ticker": true,
             "init-us-ticker-at-boot": true
         },
@@ -2135,7 +2135,7 @@
             "DAUTH_CHIP_DEFAULT",
             "MBEDTLS_PSA_CRYPTO_SPM"
         ],
-        "components_add": ["FLASHIAP"],
+        "components_add": ["FLASHIAP", "SE050"],
         "extra_labels_add": [
             "M33_S",
             "PSA",
@@ -2144,19 +2144,20 @@
         "device_has_add": [
             "FLASH",
             "TRNG",
-            "SERIAL"
+            "SERIAL",
+            "I2C"
         ],
         "deliver_to_target": "LPC55S69_NS",
         "delivery_dir": "TARGET_NXP/TARGET_MCUXpresso_MCUS/TARGET_LPC55S69/TARGET_M33_NS/prebuilt",
         "overrides": {
-            "non-secure-rom-start": "0x00050000",
-            "non-secure-rom-size": "0x50000",
-            "non-secure-ram-start": "0x20022000",
-            "non-secure-ram-size": "0x22000",
+            "non-secure-rom-start": "0x00058000",
+            "non-secure-rom-size": "0x40000",
+            "non-secure-ram-start": "0x2002C000",
+            "non-secure-ram-size": "0x18000",
             "secure-rom-start": "0x10000000",
-            "secure-rom-size": "0x48000",
+            "secure-rom-size": "0x50000",
             "secure-ram-start": "0x30000000",
-            "secure-ram-size": "0x22000"
+            "secure-ram-size": "0x2C000"
         }
     },
     "NUCLEO_F030R8": {

@@ -375,7 +375,6 @@ int mbedtls_platform_set_nv_seed(
 int mbedtls_platform_setup( mbedtls_platform_context *ctx )
 {
     (void)ctx;
-
     return( 0 );
 }
 

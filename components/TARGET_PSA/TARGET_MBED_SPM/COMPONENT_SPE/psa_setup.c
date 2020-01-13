@@ -142,7 +142,7 @@ void attest_srv_init(spm_partition_t *partition)
 /* -----------------------------------------------------------------------------
  * CRYPTO_SRV declarations
  * -------------------------------------------------------------------------- */
-MBED_ALIGN(8) static uint8_t crypto_srv_thread_stack[32768] = {0};
+MBED_ALIGN(8) static uint8_t crypto_srv_thread_stack[65536] = {0};
 
 static osRtxThread_t crypto_srv_thread_cb = {0};
 static const osThreadAttr_t crypto_srv_thread_attr = {
@@ -151,7 +151,7 @@ static const osThreadAttr_t crypto_srv_thread_attr = {
     .cb_mem = &crypto_srv_thread_cb,
     .cb_size = sizeof(crypto_srv_thread_cb),
     .stack_mem = crypto_srv_thread_stack,
-    .stack_size = 32768,
+    .stack_size = 65536,
     .priority = osPriorityNormal,
     .tz_module = 0,
     .reserved = 0

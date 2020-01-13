@@ -21,7 +21,7 @@
 #ifndef __PLATFORM_ALT__
 #define __PLATFORM_ALT__
 #include "platform_mbed.h"
-#if defined(MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT)
+#if defined(MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT) && !SSS_HAVE_SE
 #include "crypto_device_platform.h"
 /**
  * \brief   The platform context structure.

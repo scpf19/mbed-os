@@ -58,8 +58,8 @@
 
 /* Offset and size definition in flash area, used by assemble.py */
 #define SECURE_IMAGE_OFFSET             (0x0)
-#define SECURE_IMAGE_MAX_SIZE           (0x00048000)
-#define NON_SECURE_IMAGE_MAX_SIZE       (0x00050000)
+#define SECURE_IMAGE_MAX_SIZE           (0x00050000)
+#define NON_SECURE_IMAGE_MAX_SIZE       (0x00040000)
 
 /* Secure image */
 #define FLASH_AREA_IMAGE_0_OFFSET       (FLASH_AREA_BL2_OFFSET + \

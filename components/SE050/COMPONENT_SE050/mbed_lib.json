@@ -1,0 +1,27 @@
+{
+    "name": "se050_sss_lib",
+    "macros": ["T1oI2C", "MBEDTLS", "LPC_55x", "T1oI2C_UM1225_SE050",
+               "SCP_MODE=NO_C_MAC_NO_C_ENC_NO_R_MAC_NO_R_ENC", "SSS_HAVE_SE=1",
+               "SSSFTR_SE05X_KEY_SET=1", "SSSFTR_SE05X_ECC=1", "SSSFTR_SE05X_AES=1",
+               "SSSFTR_SE05X_KEY_GET=1", "SSSFTR_SE05X_CREATE_DELETE_CRYPTOOBJ=1",
+               "MBEDTLS_USER_CONFIG_FILE=\"mbedtls_user_config.h\"", "FLOW_VERBOSE=1"
+    ],
+    "config": {
+        "i2c_sda": {
+            "help": "I2C SDA pin to use",
+            "value": "I2C_SDA"
+        },
+        "i2c_scl": {
+            "help": "I2C SCL pin to use",
+            "value": "I2C_SCL"
+        },
+        "reset": {
+            "helo": "Reset pin to use",
+            "value": "D2"
+        },
+        "frequency": {
+            "helo": "I2C frequency",
+            "value": 400000
+        }
+    }
+}

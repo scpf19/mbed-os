@@ -817,8 +817,9 @@ static int tls_prf_generic( mbedtls_md_type_t md_type,
 }
 
 #else /* MBEDTLS_USE_PSA_CRYPTO */
-
-static int tls_prf_generic( mbedtls_md_type_t md_type,
+/* changed by scpf */
+#if !defined(MBEDTLS_PRF_ALT)
+int tls_prf_generic( mbedtls_md_type_t md_type,
                             const unsigned char *secret, size_t slen,
                             const char *label,
                             const unsigned char *random, size_t rlen,
@@ -889,6 +890,7 @@ exit:
 
     return( ret );
 }
+#endif /* !defined(MBEDTLS_PRF_ALT) */
 #endif /* MBEDTLS_USE_PSA_CRYPTO */
 #if defined(MBEDTLS_SHA256_C)
 static int tls_prf_sha256( const unsigned char *secret, size_t slen,
