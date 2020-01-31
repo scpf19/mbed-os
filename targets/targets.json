@@ -2135,7 +2135,7 @@
             "DAUTH_CHIP_DEFAULT",
             "MBEDTLS_PSA_CRYPTO_SPM"
         ],
-        "components_add": ["FLASHIAP", "SE050"],
+        "components_add": ["FLASHIAP"],
         "extra_labels_add": [
             "M33_S",
             "PSA",

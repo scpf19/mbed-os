@@ -4,7 +4,7 @@
                "SCP_MODE=NO_C_MAC_NO_C_ENC_NO_R_MAC_NO_R_ENC", "SSS_HAVE_SE=1",
                "SSSFTR_SE05X_KEY_SET=1", "SSSFTR_SE05X_ECC=1", "SSSFTR_SE05X_AES=1",
                "SSSFTR_SE05X_KEY_GET=1", "SSSFTR_SE05X_CREATE_DELETE_CRYPTOOBJ=1",
-               "MBEDTLS_USER_CONFIG_FILE=\"mbedtls_user_config.h\"", "FLOW_VERBOSE=1"
+               "MBEDTLS_USER_CONFIG_FILE=\"mbedtls_user_config.h\""
     ],
     "config": {
         "i2c_sda": {
@@ -16,11 +16,11 @@
             "value": "I2C_SCL"
         },
         "reset": {
-            "helo": "Reset pin to use",
-            "value": "D2"
+            "help": "Reset pin to use",
+            "value": "D3"
         },
         "frequency": {
-            "helo": "I2C frequency",
+            "help": "I2C frequency",
             "value": 400000
         }
     }

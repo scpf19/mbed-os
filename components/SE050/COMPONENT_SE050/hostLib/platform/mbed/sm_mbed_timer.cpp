@@ -39,43 +39,18 @@
 #include "mbed.h"
 
 #include "sm_timer.h"
-#include "fsl_ctimer.h"
-#include "PeripheralNames.h"
-
-static void s_ticker_irq_handler(void)
-{
-
-}
 
 uint32_t sm_initSleep(void)
 {
-    //printf("hello from sm_initSleep\r\n");
-    //ctimer_config_t config;
-
-    //uint32_t pclk = CLOCK_GetFreq(kCLOCK_BusClk);
-    //uint32_t prescale = pclk / 1000000;
-
-    // CTIMER_GetDefaultConfig(&config);
-    // config.prescale = 1;
-    // CTIMER_Init(CTIMER0, &config);
-    // CTIMER_Reset(CTIMER0);
-    // CTIMER_StartTimer(CTIMER0);
-    // printf("hello from the middle\n");
-    // NVIC_SetVector(CTIMER0_IRQn, (uint32_t)s_ticker_irq_handler);
-    // NVIC_EnableIRQ(CTIMER0_IRQn);
-    // CTIMER0->MCR &= ~1;
-
     return 0;
 }
 
 void sm_sleep(uint32_t msec)
 {
-    printf("hello from sm_sleep, %d\r\n", msec*1000);
-    //wait_us(msec*1000);
+    wait_us(msec * 1000);
 }
 
 void sm_usleep(uint32_t microsec)
 {
-    printf("hello from sm_us_sleep\r\n");
-    //wait_us(microsec);
+    wait_us(microsec);
 }

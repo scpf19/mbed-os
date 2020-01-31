@@ -108,7 +108,7 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 /****************************************************************/
 /* Global data, support functions and library management */
 /****************************************************************/
-#if SSS_HAVE_SE
+//#if !SSS_HAVE_SE
 #define CA_CERTIFICATE                                                  \
 "-----BEGIN CERTIFICATE-----\r\n"                                       \
 "MIICrDCCAlKgAwIBAgICEAAwCgYIKoZIzj0EAwIwga0xCzAJBgNVBAYTAkNIMRQw\r\n"  \
@@ -175,7 +175,7 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 "AwEHoUQDQgAEaFtMCLfBMZN76p7xmlrnnQRFdA40XbylfuJzPrH7zEmZ5PoPEywt\r\n" \
 "CefuC78E3d63PXHr8oBTsaaxs+QxIaOWpg==\r\n"                             \
 "-----END EC PRIVATE KEY-----\r\n"
-#endif /* SSS_HAVE_SE */
+//#endif /* !SSS_HAVE_SE */
 
 typedef psa_send_func_t mbedtlsSendCallback __attribute__((cmse_nonsecure_call));
 typedef psa_recv_func_t mbedtlsReceiveCallback __attribute__((cmse_nonsecure_call));

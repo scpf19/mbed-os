@@ -43,6 +43,7 @@
 
 DigitalOut seResetGpio(MBED_CONF_SE050_SSS_LIB_RESET);
 
+/* No configuration is needed */ 
 void axReset_HostConfigure(void)
 {}
 

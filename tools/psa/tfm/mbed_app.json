@@ -7,6 +7,7 @@
     "artifact_name": "tfm",
     "target_overrides": {
         "LPC55S69_S": {
+            "target.components_add"                 : ["SE050"],
             "se050_sss_lib.i2c_sda"                 : "I2C_SDA",
             "se050_sss_lib.i2c_scl"                 : "I2C_SCL",
             "se050_sss_lib.reset"                   : "D3",

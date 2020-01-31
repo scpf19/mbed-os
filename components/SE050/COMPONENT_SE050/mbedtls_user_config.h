@@ -25,21 +25,22 @@
  * SUCH DAMAGE.
  *
  *****************************************************************************
- * \file        mbedtks_user_config.h
+ * \file        mbedtls_user_config.h
  *
- * \description Module defines user specific configurations for mbedTLS to use 
+ * \description Module defines user specific configurations for mbedTLS.
  *              
- *
  * \author      Tobias Schläpfer (scpf)
  *
  * \date        16.12.2019
  *
  *****************************************************************************/
 
+#define MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT
+
 // #define MBEDTLS_ECDH_ALT /* !NXP specific define! */
 // #define MBEDTLS_ECDH_COMPUTE_SHARED_ALT
 // #define MBEDTLS_ECDH_GEN_PUBLIC_ALT
 // #define MBEDTLS_PRF_ALT
-#define MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT
-// #define MBEDTLS_ECDSA_SIGN_ALT
+
+#define MBEDTLS_ECDSA_SIGN_ALT
 #define MBEDTLS_ECDSA_VERIFY_ALT

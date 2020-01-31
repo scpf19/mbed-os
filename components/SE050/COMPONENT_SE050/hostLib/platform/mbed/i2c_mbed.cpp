@@ -79,7 +79,7 @@ i2c_error_t axI2CWrite(unsigned char bus_unused_param,
                        unsigned short txLen)
 {
     int ret = 0;
-    printf("hello from write\r\n");
+
     ret = i2cMbed->write(addr, (char*)pTx, txLen);
     if(ret != 0)
     {
@@ -96,7 +96,7 @@ i2c_error_t axI2CRead(unsigned char bus,
                       unsigned short rxLen)
 {
     int ret = 0;
-    printf("hello from read\r\n");
+
     ret = i2cMbed->read(addr, (char*)pRx, rxLen);
     if(ret != 0)
     {

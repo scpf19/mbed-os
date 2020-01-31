@@ -86,7 +86,7 @@
 /* Increase secure DATA area to run the regression tests */
 //#define S_DATA_SIZE     ((TOTAL_RAM_SIZE / 4) * 3)
 //#else
-#define S_DATA_SIZE     0x0002C000//(TOTAL_RAM_SIZE / 2)
+#define S_DATA_SIZE     0x00022000//(TOTAL_RAM_SIZE / 2)
 //#endif
 
 #define S_DATA_LIMIT    (S_DATA_START + S_DATA_SIZE - 1)
