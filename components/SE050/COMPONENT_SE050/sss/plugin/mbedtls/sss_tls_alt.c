@@ -64,17 +64,23 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/entropy_poll.h"
 
+#include "mbed_stats.h"
+#include "mbed_mem_trace.h"
+
 #include "ax_reset.h"
 #include "fsl_sss_api.h"
 #include "nxScp03_Types.h"
 #include <fsl_sss_util_asn1_der.h>
 #include <nxLog_sss.h>
+#include "ex_sss_boot.h"
 
 #include "psa/crypto_sizes.h"
+#include "psa_se050.h"
 
-#define CLIENT_KEY_SLOT                     0xAFFE //0xAAFF
-#define CLIENT_CERTIFICATE_SLOT             0xFFBB
-#define CA_CERTIFICATE_SLOT                 0xEEFF
+#define CLIENT_KEY_SLOT                     0xAFFE
+#define CLIENT_CERTIFICATE_SLOT             0xBEEF
+#define CA_CERTIFICATE_SLOT                 0xCAFE
+#define PW_SLOT                             0xDEAD
 #define EPHEMERAL_KEY_SLOT                  4
 #define SESSION_KEY_SLOT                    15
 #define OTHER_PARTY_KEY_SLOT                6
@@ -196,45 +202,33 @@ const uint8_t clientKey[] =
     0xa6, 0xb1, 0xb3, 0xe4, 0x31, 0x21, 0xa3, 0x96, 0xa6
 };
 
-/* TODO_scpf find better names for these variables */
-static sss_session_t    sssSession;
-static SE_Connect_Ctx_t sssConnectionData;
+static uint8_t            provisionState = 0;
 
-static sss_key_store_t  sssCertKey;
-static sss_object_t     sssCertKeyObject;
-static sss_key_store_t  sssCertSlot;
-static sss_object_t     sssCertObject;
-static sss_key_store_t  sssCaSlot;
-static sss_object_t     sssCaObject;
-static sss_key_store_t  sssPrivateKey;
-static sss_object_t     sssPrivateObject;
-static sss_key_store_t  sssEphemeralKey;
-static sss_object_t     sssEphemeralObject;
-static sss_key_store_t  sssSessionKey;
-static sss_object_t     sssSessionObject;
-static sss_key_store_t  sssMasterSecretKey;
-static sss_object_t     sssMasterSecretObject;
+/* Platform wide known sssSession */
+sss_session_t             sssSessionSE;
 
-static void cryptoLog(const uint8_t *buf, unsigned int size)
-{
-    unsigned int i;
-    char line[10 + 16 * 3 + 1];
-    for(i = 0; i < size; ++i)
-    {
-        if(!(i % 16))
-        {
-            if(i)
-            {
-                line[sizeof(line) - 1] = '\0';
-                printf("%s\r\n", line);
-                line[0] = '\0';
-            }
-            sprintf(line, "%08x: ", (unsigned int)i);
-        }
-        sprintf(line + 10 + (i % 16) * 3, "%02x ", buf[i]);
-    }
-    printf("%s\n\n", line);
-}
+
+static sss_session_t      sssHostSession;
+static SE_Connect_Ctx_t   sssConnectionDataHost;
+static sss_key_store_t    sssHostKeyStore;
+static ex_SE05x_authCtx_t sssHostAuthCtx;
+
+static SE_Connect_Ctx_t   sssConnectionDataSE;
+
+static sss_key_store_t    sssCertKey;
+static sss_object_t       sssCertKeyObject;
+static sss_key_store_t    sssCertSlot;
+static sss_object_t       sssCertObject;
+static sss_key_store_t    sssCaSlot;
+static sss_object_t       sssCaObject;
+static sss_key_store_t    sssPrivateKey;
+static sss_object_t       sssPrivateObject;
+static sss_key_store_t    sssEphemeralKey;
+static sss_object_t       sssEphemeralObject;
+static sss_key_store_t    sssSessionKey;
+static sss_object_t       sssSessionObject;
+static sss_key_store_t    sssMasterSecretKey;
+static sss_object_t       sssMasterSecretObject;
 
 static int get_header_and_bit_Length(int groupid, int *headerLen, int *bitLen)
 {
@@ -426,61 +420,61 @@ static int parseMpiToAsn1(mbedtls_mpi* r, mbedtls_mpi* s, uint8_t* signature, si
 {
     uint8_t  tmp[SIGNATURE_MAX_LENGTH];
     uint8_t  tmpLen = 0;
-    uint8_t  lsign_r = 0, lsign_s = 0;
+    uint8_t  lsignR = 0, lsignS = 0;
 
     if(signLen < SIGNATURE_MAX_LENGTH)
     {
         return MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL;
     }
 
-    lsign_r = mbedtls_mpi_size(r);
-    lsign_s = mbedtls_mpi_size(s);
+    lsignR = mbedtls_mpi_size(r);
+    lsignS = mbedtls_mpi_size(s);
 
     tmp[0] = 0x30; /* DER_PREFIX */
     tmp[2] = 0x02; /* Marks the start of the r component */
 
     /* Check whether the r component is negatie or not */
-    if(mbedtls_mpi_get_bit(r, ((lsign_s * 8) - 1)))
+    if(lsignR == 32)
     {
         /* Padding */
-        tmp[3] = lsign_r + 1;
+        tmp[3] = lsignR + 1;
         tmp[4] = 0x00;
         tmpLen = 5;
     }else
     {
-        tmp[3] = lsign_r;
+        tmp[3] = lsignR;
         tmpLen = 4;
     }
 
-    if(mbedtls_mpi_write_binary(r, &tmp[tmpLen], lsign_r))
+    if(mbedtls_mpi_write_binary(r, &tmp[tmpLen], lsignR))
     {
         return MBEDTLS_ERR_MPI_BAD_INPUT_DATA;
     }
 
-    tmpLen += lsign_r;
+    tmpLen += lsignR;
     tmp[tmpLen] = 0x02; /* Marks the start of the s component */
     tmpLen += 1;
 
     /* Check whether the s component is negatie or not */
-    if(mbedtls_mpi_get_bit(s, ((lsign_s * 8) - 1)))
+    if(lsignS == 32)
     {   
         /* Padding */
-        tmp[tmpLen] = lsign_s + 1;
+        tmp[tmpLen] = lsignS + 1;
         tmpLen += 1;
         tmp[tmpLen] = 0x00;
         tmpLen += 1;
     }else
     {
-        tmp[tmpLen] = lsign_s;
+        tmp[tmpLen] = lsignS;
         tmpLen += 1;
     }
 
-    if(mbedtls_mpi_write_binary(s, &tmp[tmpLen], lsign_s))
+    if(mbedtls_mpi_write_binary(s, &tmp[tmpLen], lsignS))
     {
         return MBEDTLS_ERR_MPI_BAD_INPUT_DATA;
     }
 
-    tmpLen += lsign_s;
+    tmpLen += lsignS;
     /* Length without DER_PREFIX and the remaining_length byte */
     tmp[1] = (tmpLen - 2); 
 
@@ -578,6 +572,8 @@ int mbedtls_ecdsa_sign( mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s,
 {
     sss_status_t      status = kStatus_SSS_Success;
     sss_asymmetric_t  sssAsymmetricCtx;
+    sss_key_store_t   sssKeyStore;
+    sss_object_t      sssKeyObject;
     sss_algorithm_t   sssEcdsaHashAlgorithm;
 
     int ret = 0;
@@ -592,9 +588,37 @@ int mbedtls_ecdsa_sign( mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s,
         return -1;
     }
 
+    status = sss_key_store_context_init(&sssKeyStore, &sssSessionSE);
+    if(status != kStatus_SSS_Success)
+    {
+        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
+        return -1;
+    }
+
+    status = sss_key_store_load(&sssKeyStore);
+    if(status != kStatus_SSS_Success)
+    {
+        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
+        return -1;
+    }
+
+    status = sss_key_object_init(&sssKeyObject, &sssKeyStore);
+    if(status != kStatus_SSS_Success) 
+    {
+        printf("sss_key_object_init for CA cert FAILED, 0x%x\n", status);
+        return -1;
+    }
+
+    status = sss_key_object_get_handle(&sssKeyObject, CLIENT_KEY_SLOT);
+    if(status != kStatus_SSS_Success) 
+    {
+        printf("sss_key_object_init for CA cert FAILED, 0x%x\n", status);
+        return -1;
+    }
+
     status = sss_asymmetric_context_init(&sssAsymmetricCtx,
-                                         &sssSession,
-                                         &sssCertKeyObject,
+                                         &sssSessionSE,
+                                         &sssKeyObject,
                                          sssEcdsaHashAlgorithm,
                                          kMode_SSS_Sign);
     if(status != kStatus_SSS_Success)
@@ -625,6 +649,9 @@ int mbedtls_ecdsa_sign( mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s,
 
 cleanUp:
     sss_asymmetric_context_free(&sssAsymmetricCtx);
+    sss_key_store_context_free(&sssKeyStore);
+    sss_key_object_free(&sssKeyObject);
+
     return ret; 
 }
 
@@ -663,7 +690,7 @@ int mbedtls_ecdsa_verify( mbedtls_ecp_group *grp,
         return MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
     }
 
-    status = sss_key_store_context_init(&sssPubKeySlot, &sssSession);
+    status = sss_key_store_context_init(&sssPubKeySlot, &sssSessionSE);
     if(status != kStatus_SSS_Success)
     {
         printf("sss_key_store_context_init FAILED, 0x%x\r\n", status);
@@ -727,7 +754,7 @@ int mbedtls_ecdsa_verify( mbedtls_ecp_group *grp,
     }
 
     status = sss_asymmetric_context_init(&sssAsymmetricCtx,
-                                         &sssSession,
+                                         &sssSessionSE,
                                          &sssPubKeyObject,
                                          sssEcdsaHashAlgorithm,
                                          kMode_SSS_Verify);
@@ -752,6 +779,7 @@ int mbedtls_ecdsa_verify( mbedtls_ecp_group *grp,
 
 cleanUp:
     sss_key_store_erase_key(&sssPubKeySlot, &sssPubKeyObject);
+    sss_key_store_context_free(&sssPubKeySlot);
     sss_asymmetric_context_free(&sssAsymmetricCtx);
     sss_key_object_free(&sssPubKeyObject);
 
@@ -799,7 +827,7 @@ int mbedtls_ecdh_gen_public(mbedtls_ecp_group *grp,
     }
 
     /* Slot for the ephemeral key */
-    status = sss_key_store_context_init(&sssEphemeralKey, &sssSession);
+    status = sss_key_store_context_init(&sssEphemeralKey, &sssSessionSE);
     if(status != kStatus_SSS_Success)
     {
         printf("sss_key_store_context_init FAILED, 0x%x\n", status);
@@ -902,10 +930,6 @@ int mbedtls_ecdh_compute_shared(mbedtls_ecp_group *grp,
         return 1;
     }
 
-    // if(&sssEphemeralObject == NULL) 
-    // {
-    //     ret = mbedtls_ecdh_compute_shared_o(grp, z, Q, d, f_rng, p_rng);
-    // }
     else if(sssEphemeralObject.cipherType == kSSS_CipherType_EC_NIST_P ||
             sssEphemeralObject.cipherType == kSSS_CipherType_EC_NIST_K ||
             sssEphemeralObject.cipherType == kSSS_CipherType_EC_BRAINPOOL ||
@@ -1014,7 +1038,7 @@ int mbedtls_ecdh_compute_shared(mbedtls_ecp_group *grp,
 
             do {
                 /* Slot for the session key */
-                status = sss_key_store_context_init(&sssSessionKey, &sssSession);
+                status = sss_key_store_context_init(&sssSessionKey, &sssSessionSE);
                 if(status != kStatus_SSS_Success)
                 {
                     printf("sss_key_store_context_init FAILED, 0x%x\n", status);
@@ -1053,7 +1077,7 @@ int mbedtls_ecdh_compute_shared(mbedtls_ecp_group *grp,
                 }
 
                 /* Slot for the other partys public key */
-                status = sss_key_store_context_init(&OtherPartyKeyStore, &sssSession);
+                status = sss_key_store_context_init(&OtherPartyKeyStore, &sssSessionSE);
                 if(status != kStatus_SSS_Success)
                 {
                     printf("sss_key_store_context_init FAILED, 0x%x\n", status);
@@ -1106,7 +1130,7 @@ int mbedtls_ecdh_compute_shared(mbedtls_ecp_group *grp,
                 }
 
                 status = sss_derive_key_context_init(&context,
-                    &sssSession,
+                    &sssSessionSE,
                     &sssEphemeralObject,
                     kAlgorithm_SSS_ECDH,
                     kMode_SSS_ComputeSharedSecret);
@@ -1237,7 +1261,7 @@ int tls_prf_generic( mbedtls_md_type_t md_type,
         /* Derive master secret */
         printf("extended master secret, slen = %d", slen);
         /* Slot to store the master secret */
-        status = sss_key_store_context_init(&sssMasterSecretKey, &sssSession);
+        status = sss_key_store_context_init(&sssMasterSecretKey, &sssSessionSE);
         if(status != kStatus_SSS_Success)
         {
             printf("sss_key_store_context_init FAILED, 0x%x\n", status);
@@ -1273,7 +1297,7 @@ int tls_prf_generic( mbedtls_md_type_t md_type,
         }
 
         status = sss_derive_key_context_init(&context,
-                                             &sssSession,
+                                             &sssSessionSE,
                                              &sssSessionObject,
                                              kAlgorithm_SSS_SHA256,
                                              kMode_SSS_Digest);
@@ -1303,7 +1327,7 @@ int tls_prf_generic( mbedtls_md_type_t md_type,
         printf("key expansion, slen = %d", slen);
         sss_key_store_t  sssDerivedKey;
         sss_object_t     sssDerivedObject;
-        status = sss_key_store_context_init(&sssDerivedKey, &sssSession);
+        status = sss_key_store_context_init(&sssDerivedKey, &sssSessionSE);
         if(status != kStatus_SSS_Success)
         {
             printf("sss_key_store_context_init FAILED, 0x%x\n", status);
@@ -1339,7 +1363,7 @@ int tls_prf_generic( mbedtls_md_type_t md_type,
         }
 
         status = sss_derive_key_context_init(&context,
-                                             &sssSession,
+                                             &sssSessionSE,
                                              &sssMasterSecretObject,
                                              kAlgorithm_SSS_SHA256,
                                              kMode_SSS_Digest);
@@ -1431,28 +1455,31 @@ int mbedtls_ecdh_get_params(mbedtls_ecdh_context *ctx,
 
 static int se050Provision(void)
 {
+    int ret = 0;
     sss_status_t status = kStatus_SSS_Success;
 
-    /* TODO Check if already provisioned */
     /* Store the private key */
-    status = sss_key_store_context_init(&sssCertKey, &sssSession);
+    status = sss_key_store_context_init(&sssCertKey, &sssSessionSE);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_context_init FAILED for cert private key, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_allocate(&sssCertKey, CLIENT_KEY_SLOT);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_allocate FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_allocate FAILED for cert private key, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_init(&sssCertKeyObject, &sssCertKey);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_object_init for keyPair Failed...\n");
-        return -1;
+        printf("sss_key_object_init FAILED for cert private key, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_allocate_handle(&sssCertKeyObject,
@@ -1462,8 +1489,9 @@ static int se050Provision(void)
                                             sizeof(clientKey),
                                             kKeyObject_Mode_Persistent);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_object_allocate_handle for keyPair Failed...\n");
-        return -1;
+        printf("sss_key_object_allocate_handle for cert private key FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_set_key(&sssCertKey,
@@ -1474,30 +1502,34 @@ static int se050Provision(void)
                                    NULL,
                                    0);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_store_set_key  for keyPair Failed...\n");
-        return -1;
+        printf("sss_key_store_set_key for cert private key FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     /* Store the CA certificate */
 
-    status = sss_key_store_context_init(&sssCaSlot, &sssSession);
+    status = sss_key_store_context_init(&sssCaSlot, &sssSessionSE);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_context_init for CA cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_allocate(&sssCaSlot, CA_CERTIFICATE_SLOT);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_allocate FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_allocate for CA cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_init(&sssCaObject, &sssCaSlot);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_object_init for Pub key Failed...\n");
-        return -1;
+        printf("sss_key_object_init for CA cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_allocate_handle(&sssCaObject,
@@ -1508,8 +1540,9 @@ static int se050Provision(void)
                                             kKeyObject_Mode_Persistent);
     if (status != kStatus_SSS_Success) 
     {
-        printf(" sss_key_object_allocate_handle for Pub key Failed...\n");
-        return -1;
+        printf("sss_key_object_allocate_handle for CA cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_set_key(&sssCaSlot,
@@ -1521,30 +1554,34 @@ static int se050Provision(void)
                                    0);
     if (status != kStatus_SSS_Success) 
     {
-        printf(" sss_key_store_set_key for Pub key Failed...\n");
-        return -1;
+        printf("sss_key_store_set_key for CA cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     /* Store client certificate */
 
-    status = sss_key_store_context_init(&sssCertSlot, &sssSession);
+    status = sss_key_store_context_init(&sssCertSlot, &sssSessionSE);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_context_init for cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_allocate(&sssCertSlot, CLIENT_CERTIFICATE_SLOT);
     if(status != kStatus_SSS_Success)
     {
-        printf("sss_key_store_allocate FAILED, 0x%x\n", status);
-        return -1; //TODO_scpf find hardware error 
+        printf("sss_key_store_allocate for cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_init(&sssCertObject, &sssCertSlot);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_object_init for Pub key Failed...\n");
-        return -1;
+        printf("sss_key_object_init for cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_object_allocate_handle(&sssCertObject,
@@ -1554,8 +1591,9 @@ static int se050Provision(void)
                                             sizeof(clientCert),
                                             kKeyObject_Mode_Persistent);
     if (status != kStatus_SSS_Success) {
-        printf(" sss_key_object_allocate_handle Failed!!!");
-        return -1;
+        printf("sss_key_object_allocate_handle for cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
     status = sss_key_store_set_key(&sssCertSlot,
@@ -1566,11 +1604,24 @@ static int se050Provision(void)
                                    NULL,
                                    0);
     if (status != kStatus_SSS_Success) {
-        printf(" Store Certificate Failed!!!");
-        return -1;
+        printf("sss_key_store_set_key for cert FAILED, 0x%x\n", status);
+        ret = -1;
+        goto cleanUp;
     }
 
-    return 0;
+    provisionState = 1;
+
+cleanUp:
+    sss_key_store_context_free(&sssCertKey);
+    sss_key_object_free(&sssCertKeyObject);
+
+    sss_key_store_context_free(&sssCaSlot);
+    sss_key_object_free(&sssCaObject);
+    
+    sss_key_store_context_free(&sssCertSlot);
+    sss_key_object_free(&sssCertObject);
+
+    return ret;
 }
 
 int mbedtls_platform_setup(mbedtls_platform_context *ctx)
@@ -1578,33 +1629,62 @@ int mbedtls_platform_setup(mbedtls_platform_context *ctx)
     int ret = 0;
     sss_status_t status = kStatus_SSS_Success;
 
-    status = sss_session_create(&sssSession, 
+    /**
+     * Create host session for encrypted communication between the LPC55S69 and 
+     * the SE050
+     */
+    // sssConnectionDataHost.connType = kType_SE_Conn_Type_T1oI2C;
+    // sssConnectionDataHost.portName = NULL;
+    // print_memory_info();
+    // status = ex_sss_se05x_prepare_host(&sssHostSession, 
+    //                                    &sssHostKeyStore, 
+    //                                    &sssConnectionDataHost,
+    //                                    &sssHostAuthCtx,
+    //                                    kSSS_AuthType_SCP03);
+    // if(status != kStatus_SSS_Success)
+    // {
+    //     printf("ex_sss_se_prepare_host FAILED, 0x%x\n", status);
+    //     return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
+    // }
+    /**
+     * Create SE session for encrypted communication between the LPC55S69 and 
+     * the SE050
+     */
+    status = sss_session_create(&sssSessionSE, 
                                 kType_SSS_SE_SE05x, 
                                 0, 
                                 kSSS_ConnectionType_Plain, 
-                                &sssConnectionData);
+                                &sssConnectionDataSE);
     if(status != kStatus_SSS_Success)
     {
         printf("sss_session_create FAILED, 0x%x\n", status);
         return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
     }
 
-    status = sss_session_open(&sssSession, 
+    status = sss_session_open(&sssSessionSE, 
                               kType_SSS_SE_SE05x, 
                               0, 
                               kSSS_ConnectionType_Plain, 
-                              &sssConnectionData);
+                              &sssConnectionDataSE);
     if(status != kStatus_SSS_Success)
     {
         printf("sss_session_open FAILED, 0x%x\n", status);
         return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
     }
 
-    if(se050Provision() < 0)
-    {
-        printf("Provisioning FAILED!\n");
-        return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
-    }
+    // if(provisionState < 1)
+    // {
+    //     if(se050Provision() < 0)
+    //     {
+    //         printf("Provisioning FAILED!\n");
+    //         return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
+    //     }
+
+    //     printf("se050Provision SUCCESS\r\n");
+    // }else 
+    // {
+    //     printf("SE050 already provisioned\r\n");
+    // }
 
     return( 0 );
 }
@@ -1614,7 +1694,7 @@ int mbedtls_platform_setup(mbedtls_platform_context *ctx)
  */
 void mbedtls_platform_teardown( mbedtls_platform_context *ctx )
 {
-    sss_session_close(&sssSession);
+    sss_session_close(&sssSessionSE);
 }
 
 #endif /* MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT && SSS_HAVE_ALT_SSS */

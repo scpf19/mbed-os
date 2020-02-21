@@ -35,7 +35,7 @@
  * \date        09.12.2019
  *
  *****************************************************************************/
-#include "mbed.h"
+//#include "mbed.h"
 
 #include "psa_se050.h"
 #include "psa/crypto.h"
@@ -153,6 +153,81 @@ static sss_object_t      sssObject;
 static sss_digest_t      sssDigest;
 static sss_asymmetric_t  sssAsymmetric;
 
+void cryptoLog(const uint8_t *buf, unsigned int size)
+{
+    unsigned int i;
+    char line[10 + 16 * 3 + 1];
+    for(i = 0; i < size; ++i)
+    {
+        if(!(i % 16))
+        {
+            if(i)
+            {
+                line[sizeof(line) - 1] = '\0';
+                printf("%s\r\n", line);
+                line[0] = '\0';
+            }
+            sprintf(line, "%08x: ", (unsigned int)i);
+        }
+        sprintf(line + 10 + (i % 16) * 3, "%02x ", buf[i]);
+    }
+    printf("%s\n\n", line);
+}
+
+psa_status_t se050GetCert(uint8_t* aCert, size_t* aCertSize, uint32_t aSlot)
+{
+    extern sss_session_t sssSessionSE;
+    sss_status_t         status = kStatus_SSS_Success;
+    sss_key_store_t      sssKeyStore;
+    sss_object_t         sssObject;
+    size_t certSize = *aCertSize * 8;
+
+    status = sss_key_store_context_init(&sssKeyStore, &sssSessionSE);
+    if(status != kStatus_SSS_Success)
+    {
+        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
+        goto exit;
+    }
+
+    status = sss_key_store_load(&sssKeyStore);
+    if(status != kStatus_SSS_Success)
+    {
+        printf("sss_key_store_context_init FAILED, 0x%x\n", status);
+        goto exit;
+    }
+
+    status = sss_key_object_init(&sssObject, &sssKeyStore);
+    if(status != kStatus_SSS_Success) 
+    {
+        printf("sss_key_object_init for CA cert FAILED, 0x%x\n", status);
+        goto exit;
+    }
+
+    status = sss_key_object_get_handle(&sssObject, aSlot);
+    if(status != kStatus_SSS_Success) 
+    {
+        printf("sss_key_object_init for CA cert FAILED, 0x%x\n", status);
+        goto exit;
+    }
+
+    status = sss_key_store_get_key(&sssKeyStore,
+                                   &sssObject,
+                                   aCert,
+                                   aCertSize,
+                                   &certSize);
+    if(status != kStatus_SSS_Success) 
+    {
+        printf("sss_key_store_get_key for CA cert FAILED, 0x%x\n", status);
+        goto exit;
+    }
+
+exit:
+    sss_key_store_context_free(&sssKeyStore);
+    sss_key_object_free(&sssObject);
+
+    return status;
+}
+
 psa_status_t se050_init(void* ctx)
 {
     sss_status_t status = kStatus_SSS_Success;
@@ -195,12 +270,7 @@ psa_status_t se050_provision(void)
     // }
 
     /* Check whether the SE050 is already provisioned */
-    // status = sss_key_store_context_init(&sssKeyStore, &sssSession);
-    // if(status != kStatus_SSS_Success)
-    // {
-    //     printf("sss_key_store_context_init FAILED, 0x%x\n", status);
-    //     goto exit;
-    // }
+
 
     // status = sss_key_store_allocate(&sssKeyStore, slot);
     // if(status != kStatus_SSS_Success)

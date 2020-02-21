@@ -159,9 +159,7 @@ sss_status_t sss_se05x_session_open(sss_se05x_session_t *session,
     pSe05xSession_t se05xSession;
     ENSURE_OR_GO_EXIT(session);
     se05xSession = &session->s_ctx;
-
     memset(session, 0, sizeof(*session));
-
     ENSURE_OR_GO_EXIT(connectionData);
     pAuthCtx = (SE05x_Connect_Ctx_t *)connectionData;
 
@@ -853,29 +851,6 @@ sss_status_t sss_se05x_derive_key_context_init(sss_se05x_derive_key_t *context,
 
     return retval;
 }
-
-
-static void cryptoLog(const uint8_t *buf, unsigned int size)
-{
-    unsigned int i;
-    char line[10 + 16 * 3 + 1];
-    for(i = 0; i < size; ++i)
-    {
-        if(!(i % 16))
-        {
-            if(i)
-            {
-                line[sizeof(line) - 1] = '\0';
-                printf("%s\r\n", line);
-                line[0] = '\0';
-            }
-            sprintf(line, "%08x: ", (unsigned int)i);
-        }
-        sprintf(line + 10 + (i % 16) * 3, "%02x ", buf[i]);
-    }
-    printf("%s\n\n", line);
-}
-
 
 sss_status_t sss_se05x_derive_key_go(sss_se05x_derive_key_t *context,
     const uint8_t *saltData,
@@ -2826,6 +2801,7 @@ sss_status_t sss_se05x_key_store_get_key(sss_se05x_key_store_t *keyStore,
         ENSURE_OR_GO_EXIT(status == SM_OK);
         if (*keylen < size) {
             LOG_E("Insufficient buffer ");
+            printf("Required size = %d", size);
             goto exit;
         }
 
@@ -3050,6 +3026,7 @@ sss_status_t sss_se05x_key_store_get_key_attst(sss_se05x_key_store_t *keyStore,
 
         if (*keylen < size) {
             LOG_E("Insufficient buffer ");
+            printf("Required size = %d", size);
             goto exit;
         }
 

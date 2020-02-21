@@ -2440,6 +2440,7 @@ void psa_tls_operation(void)
     switch (msg.type) {
         case PSA_IPC_CONNECT: {
             psa_tls_operation_t *psa_operation = mbedtls_calloc(1, sizeof(psa_tls_operation_t));
+            
             if (psa_operation == NULL) {
                 status = PSA_CONNECTION_REFUSED;
                 break;
@@ -2496,6 +2497,7 @@ void psa_tls_operation(void)
                     }
                     
                     status = psa_tls_write(msg.rhandle, data, data_size);
+                    mbedtls_free(data);
                     break;
                 }
                 case PSA_TLS_READ: {

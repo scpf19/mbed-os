@@ -39,3 +39,7 @@
 #include "psa/crypto_se_driver.h"
 
 extern psa_drv_se_t se050_drv_info;
+
+psa_status_t se050GetCert(uint8_t* aCert, size_t* aCertSize, uint32_t aSlot);
+
+void cryptoLog(const uint8_t *buf, unsigned int size);

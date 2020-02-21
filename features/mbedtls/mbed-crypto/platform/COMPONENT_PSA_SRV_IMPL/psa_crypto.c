@@ -108,7 +108,7 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 /****************************************************************/
 /* Global data, support functions and library management */
 /****************************************************************/
-//#if !SSS_HAVE_SE
+#if !COMPONENT_SE050
 #define CA_CERTIFICATE                                                  \
 "-----BEGIN CERTIFICATE-----\r\n"                                       \
 "MIICrDCCAlKgAwIBAgICEAAwCgYIKoZIzj0EAwIwga0xCzAJBgNVBAYTAkNIMRQw\r\n"  \
@@ -175,7 +175,19 @@ static inline int safer_memcmp( const uint8_t *a, const uint8_t *b, size_t n )
 "AwEHoUQDQgAEaFtMCLfBMZN76p7xmlrnnQRFdA40XbylfuJzPrH7zEmZ5PoPEywt\r\n" \
 "CefuC78E3d63PXHr8oBTsaaxs+QxIaOWpg==\r\n"                             \
 "-----END EC PRIVATE KEY-----\r\n"
-//#endif /* !SSS_HAVE_SE */
+
+/* Dummy private key for mbedTLS to load if the SE050 is used */
+#else
+#define CLIENT_PRIVATE_KEY                                             \
+"-----BEGIN EC PARAMETERS-----\r\n"                                    \
+"BggqhkjOPQMBBw==\r\n"                                                 \
+"-----END EC PARAMETERS-----\r\n"                                      \
+"-----BEGIN EC PRIVATE KEY-----\r\n"                                   \
+"MHcCAQEEIGXH6UD7u5IjCta07NxAaMz17hoShGiP8OOWZ8Uv4+UboAoGCCqGSM49\r\n" \
+"AwEHoUQDQgAEFqW2d0S0dAK/OJJq/dLBCfCahDt+lKoyODe8hJHDQqDQdsyn7Hto\r\n" \
+"Oi6FpXSMn42C5U4xCLnebSfHGICMlAwJdw==\r\n"                             \
+"-----END EC PRIVATE KEY-----\r\n"
+#endif /* !COMPONENT_SE050 */
 
 typedef psa_send_func_t mbedtlsSendCallback __attribute__((cmse_nonsecure_call));
 typedef psa_recv_func_t mbedtlsReceiveCallback __attribute__((cmse_nonsecure_call));
@@ -5864,7 +5876,7 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void*
 
     /* Define the cipher suite to be used.
      * MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 is required for the Mosquitto 
-     * broker. 
+     * broker. .
      */
     static const int ciphersuites[2] = {MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8, 
                                         MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256};
@@ -5875,19 +5887,55 @@ static psa_status_t psa_tls_init_handshake(psa_tls_operation_t* operation, void*
     mbedtls_x509_crt_init(&clientcert);
     mbedtls_pk_init(&clientprk);
 
+#if !COMPONENT_SE050
     if((status = mbedtls_x509_crt_parse(&cacert, 
-                                     (const char*)CA_CERTIFICATE, 
-                                     sizeof(CA_CERTIFICATE))) < 0)
+                                        (const char*)CA_CERTIFICATE, 
+                                        sizeof(CA_CERTIFICATE))) < 0)
     {
         goto exit;
     }
+#else
+    uint8_t caCert[1024] = {0};
+    size_t caCertSize    = 1024;
 
+    if(se050GetCert(&caCert, &caCertSize, 0xCAFE) != kStatus_SSS_Success)
+    {
+        printf("Get CA cert from SE050 FAILED\r\n");
+        goto exit;
+    }
+
+    if((status = mbedtls_x509_crt_parse(&cacert, 
+                                        caCert, 
+                                        caCertSize)) < 0)
+    {
+        goto exit;
+    }
+#endif /* !COMPONENT_SE050 */
+
+#if !COMPONENT_SE050
     if((status = mbedtls_x509_crt_parse(&clientcert, 
                                         (const char*)CLIENT_CERTIFICATE, 
                                         sizeof(CLIENT_CERTIFICATE))) < 0)
     {
         goto exit;
     }
+#else
+    uint8_t cert[1024] = {0};
+    size_t  certSize    = 1024;
+
+    if(se050GetCert(&cert, &certSize, 0xBEEF) != kStatus_SSS_Success)
+    {
+        printf("Get client cert from SE050 FAILED\r\n");
+        goto exit;
+    }
+
+    if((status = mbedtls_x509_crt_parse(&clientcert, 
+                                        cert, 
+                                        certSize)) < 0)
+    {
+        goto exit;
+    }
+#endif  /* !COMPONENT_SE050 */
 
     if((status =  mbedtls_pk_parse_key(&clientprk, 
                                        (const char*)CLIENT_PRIVATE_KEY, 
